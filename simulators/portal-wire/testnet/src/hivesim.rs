@@ -50,7 +50,7 @@ pub struct TestRun {
 }
 
 impl TestSpec {
-    pub fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite) {
+    pub async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite) {
         let test_run = TestRun {
             suite_id,
             suite,
@@ -59,7 +59,7 @@ impl TestSpec {
             always_run: self.always_run,
         };
 
-        run_test(simulation, test_run, self.run);
+        run_test(simulation, test_run, self.run).await;
     }
 }
 
@@ -138,22 +138,64 @@ impl Simulation {
         let client = reqwest::Client::new();
         client.delete(url).send().await.unwrap();
     }
+
+    /// Starts a new test case, returning the testcase id as a context identifier
+    pub async fn start_test(
+        &self,
+        test_suite: SuiteID,
+        name: String,
+        description: String,
+    ) -> TestID {
+        let url = format!("{}/testsuite/{}/test", self.url, test_suite);
+        let client = reqwest::Client::new();
+        let body = TestRequest { name, description };
+
+        let res = client
+            .post(url)
+            .json(&body)
+            .send()
+            .await
+            .unwrap()
+            .json::<TestID>()
+            .await
+            .unwrap();
+
+        res
+    }
+
+    /// Finishes the test case, cleaning up everything, logging results, and returning
+    /// an error if the process could not be completed.
+    pub async fn end_test(&self, test_suite: SuiteID, test: TestID, test_result: TestResult) {
+        let url = format!("{}/testsuite/{}/test/{}", self.url, test_suite, test);
+        let client = reqwest::Client::new();
+
+        client.post(url).json(&test_result).send().await.unwrap();
+    }
 }
 
-#[derive(Clone, Debug, Default)]
+/// Describes the outcome of a test.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TestResult {
     pass: bool,
     details: String,
 }
 
-pub fn run_test(host: Simulation, test: TestRun, f: fn(Test)) {
-    let test = Test {
-        sim: host,
-        test_id: Default::default(),
+pub async fn run_test(host: Simulation, test: TestRun, f: fn(Test)) {
+    // Register test on simulation server and initialize the T.
+    let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
+
+    let mut test = Test {
+        sim: host.clone(),
+        test_id,
         suite: test.suite,
         suite_id: test.suite_id,
         result: Default::default(),
     };
 
-    f(test);
+    test.result.pass = true;
+
+    // run test function
+    f(test.clone());
+
+    host.end_test(test.suite_id, test_id, test.result).await;
 }
