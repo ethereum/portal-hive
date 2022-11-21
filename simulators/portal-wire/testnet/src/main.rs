@@ -26,7 +26,7 @@ async fn run_suite(host: Simulation, suite: Suite) {
     let suite_id = host.start_suite(name, description, "".to_string()).await;
 
     for test in &suite.tests {
-        test.run_test(host.clone(), suite_id, suite.clone());
+        test.run_test(host.clone(), suite_id, suite.clone()).await;
     }
 
     host.end_suite(suite_id).await;
