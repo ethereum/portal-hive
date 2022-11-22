@@ -2,17 +2,18 @@ use testnet::hivesim::{Simulation, Suite, Test, TestSpec};
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
     let mut suite = Suite {
         name: "portal-testnet".to_string(),
-        description: "collection of different testnet compositions and assertions".to_string(),
+        description: "Collection of different testnet compositions and assertions".to_string(),
         tests: vec![],
     };
 
     suite.add(TestSpec {
-        name: "portal_testnets".to_string(),
-        description: "collection of different testnet compositions and assertions".to_string(),
+        name: "offer-accept".to_string(),
+        description: "Test portal wire OFFER/ACCEPT messages".to_string(),
         always_run: false,
-        run: test_baba,
+        run: test_offer_accept,
     });
 
     let sim = Simulation::new();
@@ -32,6 +33,16 @@ async fn run_suite(host: Simulation, suite: Suite) {
     host.end_suite(suite_id).await;
 }
 
-fn test_baba(_t: Test) {
-    println!("Hello baba");
+fn test_offer_accept(test: Test) {
+    futures::executor::block_on(offer_accept_impl(test));
+}
+
+async fn offer_accept_impl(test: Test) {
+    // 1. Run trin client
+    // let trin = test.start_client("trin".to_string()).await;
+    // 2. Run fluffy client
+    let _fluffy = test.start_client("fluffy".to_string()).await;
+    // 3. Send offer from Trin to Fluffy
+    // 4. CHeck that fluffy stored the accepted content
+    println!("Hello offer/accept");
 }
