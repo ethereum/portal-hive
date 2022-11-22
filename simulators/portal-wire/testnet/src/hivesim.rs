@@ -1,9 +1,30 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::env;
+use std::net::IpAddr;
+use std::str::FromStr;
 
 type SuiteID = u32;
 type TestID = u32;
 
+/// Represents a running client.
+#[derive(Clone, Debug)]
+pub struct Client {
+    kind: String,
+    container: String,
+    ip: IpAddr,
+    // rpc  *rpc.Client
+    test: Test,
+}
+
+/// StartNodeReponse is returned by the client startup endpoint.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct StartNodeResponse {
+    pub id: String, // Container ID.
+    pub ip: String, // IP address in bridge network
+}
+
+/// A running test
 #[derive(Clone, Debug)]
 pub struct Test {
     sim: Simulation,
@@ -11,6 +32,28 @@ pub struct Test {
     suite: Suite,
     suite_id: SuiteID,
     result: TestResult,
+}
+
+impl Test {
+    pub async fn start_client(&self, client_type: String) -> Client {
+        let (container, ip) = self
+            .sim
+            .start_client(self.suite_id, self.test_id, client_type.clone())
+            .await;
+
+        Client {
+            kind: client_type,
+            container,
+            ip,
+            test: Test {
+                sim: self.sim.clone(),
+                test_id: self.test_id,
+                suite: self.suite.clone(),
+                suite_id: self.suite_id,
+                result: self.result.clone(),
+            },
+        }
+    }
 }
 
 /// Description of a test suite
@@ -170,6 +213,38 @@ impl Simulation {
         let client = reqwest::Client::new();
 
         client.post(url).json(&test_result).send().await.unwrap();
+    }
+
+    /// Starts a new node (or other container).
+    /// Returns container id and ip.
+    pub async fn start_client(
+        &self,
+        test_suite: SuiteID,
+        test: TestID,
+        client_type: String,
+    ) -> (String, IpAddr) {
+        let url = format!("{}/testsuite/{}/test/{}/node", self.url, test_suite, test);
+        let client = reqwest::Client::new();
+
+        let mut config = HashMap::new();
+        config.insert("client", client_type);
+
+        let config = serde_json::to_string(&config).unwrap();
+        let form = reqwest::multipart::Form::new().text("config", config);
+
+        let resp = client
+            .post(url)
+            .multipart(form)
+            .send()
+            .await
+            .unwrap()
+            .json::<StartNodeResponse>()
+            .await
+            .unwrap();
+
+        let ip = IpAddr::from_str(&resp.ip).unwrap();
+
+        (resp.id, ip)
     }
 }
 
