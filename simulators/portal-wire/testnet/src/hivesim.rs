@@ -1,3 +1,4 @@
+use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
@@ -10,11 +11,11 @@ type TestID = u32;
 /// Represents a running client.
 #[derive(Clone, Debug)]
 pub struct Client {
-    kind: String,
-    container: String,
-    ip: IpAddr,
-    // rpc  *rpc.Client
-    test: Test,
+    pub kind: String,
+    pub container: String,
+    pub ip: IpAddr,
+    pub rpc: HttpClient,
+    pub test: Test,
 }
 
 /// StartNodeReponse is returned by the client startup endpoint.
@@ -41,10 +42,14 @@ impl Test {
             .start_client(self.suite_id, self.test_id, client_type.clone())
             .await;
 
+        let rpc_url = format!("http://{}:8545", ip);
+        let rpc_client = HttpClientBuilder::default().build(rpc_url).unwrap();
+
         Client {
             kind: client_type,
             container,
             ip,
+            rpc: rpc_client,
             test: Test {
                 sim: self.sim.clone(),
                 test_id: self.test_id,
