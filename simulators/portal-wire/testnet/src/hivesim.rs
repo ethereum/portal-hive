@@ -1,4 +1,4 @@
-use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
+use jsonrpc::simple_http::SimpleHttpTransport;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
@@ -9,12 +9,12 @@ type SuiteID = u32;
 type TestID = u32;
 
 /// Represents a running client.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Client {
     pub kind: String,
     pub container: String,
     pub ip: IpAddr,
-    pub rpc: HttpClient,
+    pub rpc: jsonrpc::Client,
     pub test: Test,
 }
 
@@ -43,7 +43,13 @@ impl Test {
             .await;
 
         let rpc_url = format!("http://{}:8545", ip);
-        let rpc_client = HttpClientBuilder::default().build(rpc_url).unwrap();
+
+        let transport = SimpleHttpTransport::builder()
+            .url(&rpc_url)
+            .unwrap()
+            .build();
+
+        let rpc_client = jsonrpc::Client::with_transport(transport);
 
         Client {
             kind: client_type,
