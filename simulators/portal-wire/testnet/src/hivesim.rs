@@ -25,6 +25,14 @@ pub struct StartNodeResponse {
     pub ip: String, // IP address in bridge network
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NodeInfoResponse {
+    pub node_ENR: String, // Container ID.
+    pub node_id: String,  // IP address in bridge network
+    pub ip: Option<String>,
+}
+
 /// A running test
 #[derive(Clone, Debug)]
 pub struct Test {
