@@ -1,18 +1,19 @@
 [package]
-name = "testnet"
+name = "rpc-compat"
 version = "0.1.0"
 authors = ["Ognyan Genev <ognian.genev@gmail.com>"]
 edition = "2021"
 
 [lib]
-name = "testnet"
+name = "rpc_compat"
 path = "src/lib.rs"
 
 [[bin]]
-name = "testnet"
+name = "rpc-compat"
 path = "src/main.rs"
 
 [dependencies]
+async-trait = "0.1.59"
 jsonrpc = "0.14.0"
 futures = "0.3.25"
 reqwest = { version = "0.11.12", features = ["json", "multipart"] }

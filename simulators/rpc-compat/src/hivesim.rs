@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use jsonrpc::simple_http::SimpleHttpTransport;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -25,11 +26,25 @@ pub struct StartNodeResponse {
     pub ip: String, // IP address in bridge network
 }
 
+// ClientMetadata is part of the ClientDefinition and lists metadata
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ClientMetadata {
+    roles: Vec<String>,
+}
+
+// ClientDefinition is served by the /clients API endpoint to list the available clients
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ClientDefinition {
+    name: String,
+    version: String,
+    meta: ClientMetadata,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeInfoResponse {
-    pub node_ENR: String, // Container ID.
-    pub node_id: String,  // IP address in bridge network
+    pub enr: String,     // Container ID.
+    pub node_id: String, // IP address in bridge network
     pub ip: Option<String>,
 }
 
@@ -73,6 +88,12 @@ impl Test {
             },
         }
     }
+
+    /// Runs a subtest of this test.
+    pub async fn run(&self, spec: TestSpec) {
+        spec.run_test(self.sim.clone(), self.suite_id, self.suite.clone())
+            .await
+    }
 }
 
 /// Description of a test suite
@@ -80,12 +101,56 @@ impl Test {
 pub struct Suite {
     pub name: String,
     pub description: String,
-    pub tests: Vec<TestSpec>,
+    pub tests: Vec<ClientTestSpec>,
 }
 
 impl Suite {
-    pub fn add(&mut self, test: TestSpec) {
+    pub fn add(&mut self, test: ClientTestSpec) {
         self.tests.push(test)
+    }
+}
+
+#[async_trait]
+pub trait Testable {
+    async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite);
+}
+
+/// ClientTestSpec is a test against a single client.
+/// When used as a test in a suite, the test runs against all available client types.
+#[derive(Clone, Debug)]
+pub struct ClientTestSpec {
+    // These fields are displayed in the UI. Be sure to add
+    // a meaningful description here.
+    pub name: String,
+    // If AlwaysRun is true, the test will run even if Name does not match the test
+    // pattern. This option is useful for tests that launch a client instance and
+    // then perform further tests against it.
+    pub description: String,
+    // If AlwaysRun is true, the test will run even if Name does not match the test
+    // pattern. This option is useful for tests that launch a client instance and
+    // then perform further tests against it.
+    pub always_run: bool,
+    // The Run function is invoked when the test executes.
+    pub run: fn(Test, Client),
+}
+
+#[async_trait]
+impl Testable for ClientTestSpec {
+    async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite) {
+        let clients = simulation.client_types().await;
+
+        for client in clients {
+            let client_name = client.name;
+            let test_run = TestRun {
+                suite_id,
+                suite: suite.clone(),
+                name: client_test_name(self.name.clone(), client_name.clone()),
+                desc: self.description.clone(),
+                always_run: self.always_run,
+            };
+
+            run_client_test(simulation.clone(), test_run, client_name, self.run).await;
+        }
     }
 }
 
@@ -99,6 +164,7 @@ pub struct TestSpec {
     // pattern. This option is useful for tests that launch a client instance and
     // then perform further tests against it.
     pub always_run: bool,
+    // The Run function is invoked when the test executes.
     pub run: fn(Test),
 }
 
@@ -111,8 +177,9 @@ pub struct TestRun {
     pub always_run: bool,
 }
 
-impl TestSpec {
-    pub async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite) {
+#[async_trait]
+impl Testable for TestSpec {
+    async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite) {
         let test_run = TestRun {
             suite_id,
             suite,
@@ -265,6 +332,19 @@ impl Simulation {
 
         (resp.id, ip)
     }
+
+    pub async fn client_types(&self) -> Vec<ClientDefinition> {
+        let url = format!("{}/clients", self.url);
+        let client = reqwest::Client::new();
+        client
+            .get(&url)
+            .send()
+            .await
+            .unwrap()
+            .json::<Vec<ClientDefinition>>()
+            .await
+            .unwrap()
+    }
 }
 
 /// Describes the outcome of a test.
@@ -272,6 +352,17 @@ impl Simulation {
 pub struct TestResult {
     pass: bool,
     details: String,
+}
+
+/// Ensures that 'name' contains the client type.
+pub fn client_test_name(name: String, client_type: String) -> String {
+    if name.is_empty() {
+        return client_type;
+    }
+    if name.contains("CLIENT") {
+        return name.replace("CLIENT", &*client_type);
+    }
+    format!("{} ({})", name, client_type)
 }
 
 pub async fn run_test(host: Simulation, test: TestRun, f: fn(Test)) {
@@ -290,6 +381,32 @@ pub async fn run_test(host: Simulation, test: TestRun, f: fn(Test)) {
 
     // run test function
     f(test.clone());
+
+    host.end_test(test.suite_id, test_id, test.result).await;
+}
+
+pub async fn run_client_test(
+    host: Simulation,
+    test: TestRun,
+    client_name: String,
+    f: fn(Test, Client),
+) {
+    // Register test on simulation server and initialize the Test.
+    let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
+
+    let mut test = Test {
+        sim: host.clone(),
+        test_id,
+        suite: test.suite,
+        suite_id: test.suite_id,
+        result: Default::default(),
+    };
+
+    test.result.pass = true;
+
+    // run test function
+    let client = test.start_client(client_name).await;
+    f(test.clone(), client);
 
     host.end_test(test.suite_id, test_id, test.result).await;
 }
