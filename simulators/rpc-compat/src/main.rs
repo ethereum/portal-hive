@@ -1,4 +1,4 @@
-use rpc_compat::hivesim::{Client, ClientTestSpec, Testable};
+use rpc_compat::hivesim::{Client, ClientTestSpec, NodeInfoResponse, Testable};
 use rpc_compat::hivesim::{Simulation, Suite, Test, TestSpec};
 
 #[tokio::main]
@@ -43,14 +43,35 @@ fn run_test_spec(test: Test, client: Client) {
 
 async fn run_all_tests_impl(test: Test, client: Client) {
     test.run(TestSpec {
-        name: format!("test_name_1 ({})", client.kind),
+        name: format!("discv5_nodeInfo ({})", client.kind),
         description: "".to_string(),
         always_run: false,
-        run: |_test| run_rpc_tests(),
+        run: test_node_info,
+        client: Some(client),
     })
     .await;
 }
 
-fn run_rpc_tests() {
-    println!("GO GO GO");
+fn test_node_info(mut test: Test, client: Option<Client>) -> Test {
+    let client = client.expect("Client should be available for discv5_nodeInfo test");
+    let request = client
+        .rpc
+        .read()
+        .unwrap()
+        .build_request("discv5_nodeInfo", &[]);
+
+    let response = client.rpc.read().unwrap().send_request(request).unwrap();
+    let result = response.result;
+
+    match result {
+        None => test.fatal("Expected response not received"),
+        Some(result) => {
+            let result: Result<NodeInfoResponse, _> = serde_json::from_str(result.get());
+            if let Err(msg) = result {
+                test.fatal(&msg.to_string());
+            }
+        }
+    }
+
+    test
 }

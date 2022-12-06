@@ -5,17 +5,18 @@ use std::collections::HashMap;
 use std::env;
 use std::net::IpAddr;
 use std::str::FromStr;
+use std::sync::{Arc, RwLock};
 
 type SuiteID = u32;
 type TestID = u32;
 
 /// Represents a running client.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Client {
     pub kind: String,
     pub container: String,
     pub ip: IpAddr,
-    pub rpc: jsonrpc::Client,
+    pub rpc: Arc<RwLock<jsonrpc::Client>>,
     pub test: Test,
 }
 
@@ -78,7 +79,7 @@ impl Test {
             kind: client_type,
             container,
             ip,
-            rpc: rpc_client,
+            rpc: Arc::new(RwLock::new(rpc_client)),
             test: Test {
                 sim: self.sim.clone(),
                 test_id: self.test_id,
@@ -93,6 +94,22 @@ impl Test {
     pub async fn run(&self, spec: TestSpec) {
         spec.run_test(self.sim.clone(), self.suite_id, self.suite.clone())
             .await
+    }
+
+    pub fn fatal(&mut self, msg: &str) {
+        self.log_failure(msg);
+        self.fail();
+    }
+
+    /// Prints to standard output, which goes to the simulation log file.
+    fn log_failure(&mut self, msg: &str) {
+        println!("{msg}");
+        self.result.details = msg.to_owned()
+    }
+
+    // Fail signals that the test has failed.
+    fn fail(&mut self) {
+        self.result.pass = false
     }
 }
 
@@ -165,7 +182,8 @@ pub struct TestSpec {
     // then perform further tests against it.
     pub always_run: bool,
     // The Run function is invoked when the test executes.
-    pub run: fn(Test),
+    pub run: fn(Test, Option<Client>) -> Test,
+    pub client: Option<Client>,
 }
 
 #[derive(Clone, Debug)]
@@ -188,7 +206,7 @@ impl Testable for TestSpec {
             always_run: self.always_run,
         };
 
-        run_test(simulation, test_run, self.run).await;
+        run_test(simulation, test_run, self.client.clone(), self.run).await;
     }
 }
 
@@ -365,7 +383,12 @@ pub fn client_test_name(name: String, client_type: String) -> String {
     format!("{} ({})", name, client_type)
 }
 
-pub async fn run_test(host: Simulation, test: TestRun, f: fn(Test)) {
+pub async fn run_test(
+    host: Simulation,
+    test: TestRun,
+    client: Option<Client>,
+    f: fn(Test, Option<Client>) -> Test,
+) {
     // Register test on simulation server and initialize the T.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
 
@@ -380,7 +403,7 @@ pub async fn run_test(host: Simulation, test: TestRun, f: fn(Test)) {
     test.result.pass = true;
 
     // run test function
-    f(test.clone());
+    let test = f(test, client);
 
     host.end_test(test.suite_id, test_id, test.result).await;
 }
