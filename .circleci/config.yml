@@ -19,33 +19,6 @@ jobs:
           root: .
           paths: ["hive"]
 
-  # This job runs the smoke test simulations. This requires a virtual
-  # machine instead of the container-based build environment because
-  # hive needs to be able to talk to the docker containers it creates.
-  smoke-tests:
-    machine:
-      image: ubuntu-2004:202201-02
-    steps:
-      - checkout
-      - attach_workspace: {at: "/tmp/build"}
-      - run:
-          command: "/tmp/build/hive --sim=smoke/genesis --client=go-ethereum"
-      - run:
-          command: "/tmp/build/hive --sim=smoke/network --client=go-ethereum"
-
-  # This job also runs the smoke test simulations, but against a remote dockerd.
-  smoke-tests-remote-docker:
-    docker:
-      - image: cimg/base:2022.04
-    steps:
-      - checkout
-      - attach_workspace: {at: "/tmp/build"}
-      - setup_remote_docker: {version: 20.10.14}
-      - run:
-          command: "/tmp/build/hive --sim=smoke/genesis --client=go-ethereum --loglevel 5"
-      - run:
-          command: "/tmp/build/hive --sim=smoke/network --client=go-ethereum --loglevel 5"
-
   # This job runs the go unit tests.
   go-test:
     docker:
@@ -67,13 +40,23 @@ jobs:
       - run:
           name: "Compile Go simulators"
           command: ".circleci/compile-simulators.sh"
-
+  rust-simulators:
+      docker:
+        - image: cimg/rust:1.62.0
+      steps:
+        - checkout
+        - run:
+            name: Install rustfmt
+            command: rustup component add rustfmt
+        - run:
+            name: Install Clippy
+            command: rustup component add clippy
+        - run:
+            name: "Lint, build, test Rust simulators"
+            command: ".circleci/rust-simulators.sh"
 workflows:
   main:
     jobs:
       - go-test
       - build
-      - smoke-tests:
-          requires: ["build"]
-      - smoke-tests-remote-docker:
-          requires: ["build"]
+      - rust-simulators
