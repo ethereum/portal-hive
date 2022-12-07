@@ -12,8 +12,8 @@ documentation]. You can check the installed Go version by running `go version`.
 To get hive, you first need to clone the repository to the location of your choice.
 Then you can build the hive executable.
 
-    git clone https://github.com/ethereum/hive
-    cd ./hive
+    git clone https://github.com/ogenev/portal-hive.git
+    cd ./portal-hive
     go build .
 
 To run simulations, you need a working Docker setup. Hive needs to be run on the same
@@ -29,15 +29,15 @@ simulation, use the following command:
 
     ./hive --sim <simulation> --client <client(s) you want to test against>
 
-For example, if you want to run the `discv4` test against geth and openethereum, here is
+For example, if you want to run the `rpc-compat` test against trin, fluffy and ultralight here is
 how the command would look:
 
-    ./hive --sim devp2p --sim.limit discv4 --client go-ethereum,openethereum
+    ./hive --sim rpc-compat --sim.limit discv4 --client trin,ultralight,fluffy
 
 The client list may contain any number of clients. You can select a specific client
 version by appending it to the client name with `_`, for example:
 
-    ./hive --sim devp2p --client go-ethereum_v1.9.22,go-ethereum_v1.9.23
+    ./hive --sim rpc-compat --client trin_v0.0.1,fluffy_v06.12.22
 
 Simulation runs can be customized in many ways. Here's an overview of the available
 command-line options.
@@ -76,15 +76,10 @@ pattern matches any suite/test name and the expression can match anywhere in nam
 improve command-line ergonomics, the test pattern is split at the first occurrence of `/`.
 The part before `/` matches the suite name and everything after it matches test names.
 
-For example, the following command runs the `devp2p` simulator, limiting the run to the
-`eth` suite and selecting only tests containing the word `Large`.
+For example, the following command runs the `rpc-compat` simulator, limiting the run to the
+`rpc-compat` suite and selecting only tests containing the word `Store`.
 
-    ./hive --sim devp2p --sim.limit eth/Large
-
-This command runs the `consensus` simulator and runs only tests from the `stBugs`
-directory (note the first `/`, matching any suite name):
-
-    ./hive --sim ethereum/consensus --sim.limit /stBugs/
+    ./hive --sim rpc-compat --sim.limit rpc-compat/Store
 
 ## Viewing simulation results (hiveview)
 
