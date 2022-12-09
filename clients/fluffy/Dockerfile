@@ -1,11 +1,11 @@
-ARG branch=06.12.22
+ARG branch=latest
 
 FROM ogenev/fluffy:$branch
 
 ADD fluffy.sh /fluffy.sh
 RUN chmod +x /fluffy.sh
 
-RUN echo "06.12.22" > /version.txt
+RUN echo "latest" > /version.txt
 
 EXPOSE 8545 9009/udp
 
