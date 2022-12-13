@@ -3,9 +3,6 @@
 #
 # This is a little test-script, that can be used for a some trial runs of clients.
 #
-# This script runs all production-ready tests, but does so with very restrictive options,
-# and should thus complete in tens of minutes
-#
 
 HIVEHOME="./"
 
@@ -19,7 +16,7 @@ FLAGS="$FLAGS --sim.parallelism 1 --client.checktimelimit=20s"
 echo "Running the quick'n'dirty version of the Hive tests, for local development"
 echo "To the the hive viewer up, you can do"
 echo ""
-echo "  cd $HIVEHOME/hiveviewer && ln -s /tmp/TestResults/ Results && python -m SimpleHTTPServer"
+echo "  cd $HIVEHOME/cmd/hiveview && ln -s /tmp/TestResults/ Results && python3 -m http.server"
 echo ""
 echo "And then visit http://localhost:8000/ with your browser. "
 echo "Log-files and stuff is availalbe in $RESULTS."
@@ -32,66 +29,12 @@ function run {
   (cd $HIVEHOME && $1)
 }
 
-function testconsensus {
+function testrpc {
   client=$1
-  echo "$(date) Starting hive consensus simulation [$client]"
-  run "./hive --sim ethereum/consensus --client $client --sim.loglevel 6 --sim.testlimit 2 $FLAGS"
-}
-function testgraphql {
-  echo "$(date) Starting graphql simulation [$1]"
-  run "./hive --sim ethereum/graphql --client $1 $FLAGS"
-}
-
-function testsync {
-  echo "$(date) Starting hive sync simulation [$1]"
-  run "./hive --sim ethereum/sync --client=$1 $FLAGS"
-}
-
-function testdevp2p {
-  echo "$(date) Starting p2p simulation [$1]"
-  run "./hive --sim devp2p --client $1 $FLAGS"
+  echo "$(date) Starting hive rpc-compat simulation [$client]"
+  run "./hive --sim rpc-compat --client $client --sim.loglevel 5 $FLAGS"
 }
 
 mkdir $RESULTS
 
-# Sync are quick tests
-#
-
-# These three can succsessfully sync with themselves
-#testsync openethereum_latest
-#testsync go-ethereum_latest
-testsync openethereum_latest,go-ethereum_latest
-
-# These two are failing - even against themselves
-testsync besu_latest       # fails
-testsync nethermind_latest # fails
-
-#testsync besu_latest,nethermind_latest
-
-#testsync go-ethereum_latest go-ethereum_stable
-#testsync go-ethereum_latest openethereum_latest
-#testsync go-ethereum_latest nethermind_latest
-#testsync go-ethereum_latest besu_latest
-
-# GraphQL implemented only in besu and geth
-#
-
-testgraphql go-ethereum_latest
-testgraphql besu_latest
-
-
-# The devp2p tests are pretty quick -- a few minutes
-#testdevp2p go-ethereum_latest
-#testdevp2p nethermind_latest
-#testdevp2p besu_latest
-#testdevp2p openethereum_latest
-
-
-# These take an extremely long time to run
-#testconsensus go-ethereum_latest
-#testconsensus openethereum_latest
-#testconsensus nethermind_latest
-#testconsensus besu_latest
-
-
-
+testrpc trin_latest
