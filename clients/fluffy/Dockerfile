@@ -1,6 +1,6 @@
-ARG branch=latest
+ARG branch=amd64-master-latest
 
-FROM ogenev/fluffy:$branch
+FROM statusim/nimbus-fluffy:$branch
 
 ADD fluffy.sh /fluffy.sh
 RUN chmod +x /fluffy.sh
