@@ -22,3 +22,6 @@ serde_json = "1.0.87"
 tracing = "0.1.37"
 tracing-subscriber = "0.3.16"
 tokio = { version = "1", features = ["full"] }
+
+[patch.crates-io]
+jsonrpc = { git = "https://github.com/apoelstra/rust-jsonrpc.git", branch = "master" }
