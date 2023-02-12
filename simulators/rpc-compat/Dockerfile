@@ -16,8 +16,8 @@ FROM ubuntu:22.04
 
 RUN apt update && apt install wget -y
 
-RUN wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb
-RUN dpkg -i libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb
+RUN wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.17_amd64.deb
+RUN dpkg -i libssl1.1_1.1.1f-1ubuntu2.17_amd64.deb
 
 # copy build artifacts from build stage
 COPY --from=builder /rpc-compat/target/release/rpc-compat .
