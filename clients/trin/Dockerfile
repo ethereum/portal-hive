@@ -1,6 +1,6 @@
 ARG branch=latest
 
-FROM ogenev/trin:$branch
+FROM portalnetwork/trin:$branch
 
 ADD trin.sh /trin.sh
 RUN chmod +x /trin.sh
