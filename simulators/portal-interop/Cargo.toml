@@ -1,0 +1,7 @@
+[package]
+name = "portal-interop"
+version = "0.1.0"
+authors = ["Ognyan Genev <ognian.genev@gmail.com>"]
+edition = "2021"
+
+[dependencies]
