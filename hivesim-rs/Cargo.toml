@@ -1,17 +1,16 @@
 [package]
-name = "rpc-compat"
+name = "hivesim"
 version = "0.1.0"
 authors = ["Ognyan Genev <ognian.genev@gmail.com>"]
 edition = "2021"
 
+
 [dependencies]
-hivesim = { path = "../../hivesim-rs" }
+async-trait = "0.1.59"
 jsonrpc = "0.14.0"
-futures = "0.3.25"
+reqwest = { version = "0.11.12", features = ["json", "multipart"] }
+serde = { version = "1.0.147", features = ["derive"] }
 serde_json = "1.0.87"
-tracing = "0.1.37"
-tracing-subscriber = "0.3.16"
-tokio = { version = "1", features = ["full"] }
 
 [patch.crates-io]
 jsonrpc = { git = "https://github.com/apoelstra/rust-jsonrpc.git", branch = "master" }

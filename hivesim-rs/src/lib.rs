@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use async_trait::async_trait;
 use jsonrpc::simple_http::SimpleHttpTransport;
 use serde::{Deserialize, Serialize};
@@ -378,7 +380,7 @@ pub fn client_test_name(name: String, client_type: String) -> String {
         return client_type;
     }
     if name.contains("CLIENT") {
-        return name.replace("CLIENT", &*client_type);
+        return name.replace("CLIENT", &client_type);
     }
     format!("{} ({})", name, client_type)
 }
