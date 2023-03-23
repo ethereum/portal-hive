@@ -73,7 +73,7 @@ dyn_async! {
     }
 }
 
-fn test_node_info(mut test: Test, client: Option<Client>) -> Test {
+fn test_node_info(test: &mut Test, client: Option<Client>) {
     let client = client.expect("Client should be available for discv5_nodeInfo test");
     let request = client
         .rpc
@@ -93,11 +93,9 @@ fn test_node_info(mut test: Test, client: Option<Client>) -> Test {
             }
         }
     }
-
-    test
 }
 
-fn test_history_local_content(mut test: Test, client: Option<Client>) -> Test {
+fn test_history_local_content(test: &mut Test, client: Option<Client>) {
     let client = client.expect("Client should be available for portal_historySendOffer test");
 
     let params = [arg(CONTENT_KEY)];
@@ -122,11 +120,9 @@ fn test_history_local_content(mut test: Test, client: Option<Client>) -> Test {
             test.fatal(&msg.to_string());
         }
     }
-
-    test
 }
 
-fn test_history_store(mut test: Test, client: Option<Client>) -> Test {
+fn test_history_store(test: &mut Test, client: Option<Client>) {
     let client = client.expect("Client should be available for portal_historySendOffer test");
 
     let params = [arg(CONTENT_KEY), arg(CONTENT_VALUE)];
@@ -151,6 +147,4 @@ fn test_history_store(mut test: Test, client: Option<Client>) -> Test {
             test.fatal(&msg.to_string());
         }
     }
-
-    test
 }

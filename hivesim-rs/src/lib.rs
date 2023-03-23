@@ -205,7 +205,7 @@ impl Testable for ClientTestSpec {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct TestSpec {
     // These fields are displayed in the UI. Be sure to add
     // a meaningful description here.
@@ -216,7 +216,7 @@ pub struct TestSpec {
     // then perform further tests against it.
     pub always_run: bool,
     // The Run function is invoked when the test executes.
-    pub run: fn(Test, Option<Client>) -> Test,
+    pub run: fn(&mut Test, Option<Client>),
     pub client: Option<Client>,
 }
 
@@ -421,12 +421,12 @@ pub async fn run_test(
     host: Simulation,
     test: TestRun,
     client: Option<Client>,
-    f: fn(Test, Option<Client>) -> Test,
+    f: fn(&mut Test, Option<Client>),
 ) {
     // Register test on simulation server and initialize the T.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
 
-    let mut test = Test {
+    let mut test = &mut Test {
         sim: host.clone(),
         test_id,
         suite: test.suite,
@@ -437,9 +437,10 @@ pub async fn run_test(
     test.result.pass = true;
 
     // run test function
-    let test = f(test, client);
+    f(test, client);
 
-    host.end_test(test.suite_id, test_id, test.result).await;
+    host.end_test(test.suite_id, test_id, test.result.clone())
+        .await;
 }
 
 pub async fn run_client_test(
