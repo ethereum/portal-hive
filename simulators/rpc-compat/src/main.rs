@@ -1,3 +1,4 @@
+use hivesim::dyn_async;
 use hivesim::{Client, ClientTestSpec, NodeInfoResponse, Testable};
 use hivesim::{Simulation, Suite, Test, TestSpec};
 use jsonrpc::arg;
@@ -21,7 +22,7 @@ async fn main() {
         name: "client launch".to_string(),
         description: "This test launches the client and collects its logs.".to_string(),
         always_run: true,
-        run: run_test_spec,
+        run: run_all_client_tests,
     });
 
     let sim = Simulation::new();
@@ -41,37 +42,35 @@ async fn run_suite(host: Simulation, suite: Suite) {
     host.end_suite(suite_id).await;
 }
 
-fn run_test_spec(test: Test, client: Client) {
-    futures::executor::block_on(run_all_tests_impl(test, client));
-}
+dyn_async! {
+    async fn run_all_client_tests<'a> (test: Test, client: Client) {
+        test.run(TestSpec {
+            name: format!("discv5_nodeInfo ({})", client.kind),
+            description: "".to_string(),
+            always_run: false,
+            run: test_node_info,
+            client: Some(client.clone()),
+        })
+        .await;
 
-async fn run_all_tests_impl(test: Test, client: Client) {
-    test.run(TestSpec {
-        name: format!("discv5_nodeInfo ({})", client.kind),
-        description: "".to_string(),
-        always_run: false,
-        run: test_node_info,
-        client: Some(client.clone()),
-    })
-    .await;
+        test.run(TestSpec {
+            name: format!("portal_historyLocalContent ({})", client.kind),
+            description: "".to_string(),
+            always_run: false,
+            run: test_history_local_content,
+            client: Some(client.clone()),
+        })
+        .await;
 
-    test.run(TestSpec {
-        name: format!("portal_historyLocalContent ({})", client.kind),
-        description: "".to_string(),
-        always_run: false,
-        run: test_history_local_content,
-        client: Some(client.clone()),
-    })
-    .await;
-
-    test.run(TestSpec {
-        name: format!("portal_historyStore ({})", client.kind),
-        description: "".to_string(),
-        always_run: false,
-        run: test_history_store,
-        client: Some(client),
-    })
-    .await;
+        test.run(TestSpec {
+            name: format!("portal_historyStore ({})", client.kind),
+            description: "".to_string(),
+            always_run: false,
+            run: test_history_store,
+            client: Some(client),
+        })
+        .await;
+    }
 }
 
 fn test_node_info(mut test: Test, client: Option<Client>) -> Test {

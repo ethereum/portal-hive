@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-
+use ::std::{boxed::Box, future::Future, pin::Pin};
 use async_trait::async_trait;
 use jsonrpc::simple_http::SimpleHttpTransport;
 use serde::{Deserialize, Serialize};
@@ -8,6 +8,38 @@ use std::env;
 use std::net::IpAddr;
 use std::str::FromStr;
 use std::sync::{Arc, RwLock};
+
+#[macro_export]
+macro_rules! dyn_async {(
+    $( #[$attr:meta] )* // includes doc strings
+    $pub:vis
+    async
+    fn $fname:ident<$lt:lifetime> ( $($args:tt)* ) $(-> $Ret:ty)?
+    {
+        $($body:tt)*
+    }
+) => (
+    $( #[$attr] )*
+    #[allow(unused_parens)]
+    $pub
+    fn $fname<$lt> ( $($args)* ) -> ::std::pin::Pin<::std::boxed::Box<
+        dyn $lt + Send + ::std::future::Future<Output = ($($Ret)?)>
+    >>
+    {
+        Box::pin(async move { $($body)* })
+    }
+)}
+
+type AsyncClientTestFunc = fn(
+    Test,
+    Client,
+) -> Pin<
+    Box<
+        dyn Future<Output = ()> // future API / pollable
+            + Send // required by non-single-threaded executors
+            + 'static,
+    >,
+>;
 
 type SuiteID = u32;
 type TestID = u32;
@@ -150,7 +182,7 @@ pub struct ClientTestSpec {
     // then perform further tests against it.
     pub always_run: bool,
     // The Run function is invoked when the test executes.
-    pub run: fn(Test, Client),
+    pub run: AsyncClientTestFunc,
 }
 
 #[async_trait]
@@ -414,7 +446,7 @@ pub async fn run_client_test(
     host: Simulation,
     test: TestRun,
     client_name: String,
-    f: fn(Test, Client),
+    func: AsyncClientTestFunc,
 ) {
     // Register test on simulation server and initialize the Test.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
@@ -431,7 +463,8 @@ pub async fn run_client_test(
 
     // run test function
     let client = test.start_client(client_name).await;
-    f(test.clone(), client);
+
+    (func)(test.clone(), client).await;
 
     host.end_test(test.suite_id, test_id, test.result).await;
 }
