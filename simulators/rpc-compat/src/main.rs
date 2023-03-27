@@ -1,5 +1,5 @@
 use hivesim::dyn_async;
-use hivesim::{Client, ClientTestSpec, NodeInfoResponse, Testable};
+use hivesim::{Client, ClientTestSpec, NodeInfoResponse};
 use hivesim::{Simulation, Suite, Test, TestSpec};
 use jsonrpc::arg;
 
