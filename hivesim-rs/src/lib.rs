@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 use ::std::{boxed::Box, future::Future, pin::Pin};
 use async_trait::async_trait;
+use core::fmt::Debug;
+use dyn_clone::DynClone;
 use jsonrpc::simple_http::SimpleHttpTransport;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -147,23 +149,30 @@ impl Test {
     }
 }
 
+dyn_clone::clone_trait_object!(Testable);
 /// Description of a test suite
 #[derive(Clone, Debug)]
 pub struct Suite {
     pub name: String,
     pub description: String,
-    pub tests: Vec<ClientTestSpec>,
+    pub tests: Vec<Box<dyn Testable>>,
 }
 
 impl Suite {
-    pub fn add(&mut self, test: ClientTestSpec) {
-        self.tests.push(test)
+    pub fn add<T: Testable + 'static>(&mut self, test: T) {
+        self.tests.push(Box::new(test))
     }
 }
 
 #[async_trait]
-pub trait Testable {
+pub trait Testable: DynClone + Send + Sync {
     async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite);
+}
+
+impl Debug for dyn Testable {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 /// ClientTestSpec is a test against a single client.
