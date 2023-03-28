@@ -1,6 +1,5 @@
-use hivesim::dyn_async;
-use hivesim::{Client, ClientTestSpec, NodeInfoResponse};
-use hivesim::{Simulation, Suite, Test, TestSpec};
+use hivesim::types::NodeInfoResponse;
+use hivesim::{dyn_async, Client, ClientTestSpec, Simulation, Suite, Test, TestSpec};
 use jsonrpc::arg;
 
 const CONTENT_KEY: &str = "0x00720704f3aa11c53cf344ea069db95cecb81ad7453c8f276b2a1062979611f09c";

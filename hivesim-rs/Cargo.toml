@@ -1,6 +1,6 @@
 [package]
 name = "hivesim"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 authors = ["Ognyan Genev <ognian.genev@gmail.com>"]
 edition = "2021"
 
