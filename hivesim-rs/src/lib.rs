@@ -43,6 +43,17 @@ type AsyncClientTestFunc = fn(
     >,
 >;
 
+type AsyncTestFunc = fn(
+    &mut Test,
+    Option<Client>,
+) -> Pin<
+    Box<
+        dyn Future<Output = ()> // future API / pollable
+            + Send // required by non-single-threaded executors
+            + '_,
+    >,
+>;
+
 type SuiteID = u32;
 type TestID = u32;
 
@@ -225,7 +236,7 @@ pub struct TestSpec {
     // then perform further tests against it.
     pub always_run: bool,
     // The Run function is invoked when the test executes.
-    pub run: fn(&mut Test, Option<Client>),
+    pub run: AsyncTestFunc,
     pub client: Option<Client>,
 }
 
@@ -430,7 +441,7 @@ pub async fn run_test(
     host: Simulation,
     test: TestRun,
     client: Option<Client>,
-    f: fn(&mut Test, Option<Client>),
+    func: AsyncTestFunc,
 ) {
     // Register test on simulation server and initialize the T.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
@@ -446,7 +457,7 @@ pub async fn run_test(
     test.result.pass = true;
 
     // run test function
-    f(test, client);
+    (func)(test, client).await;
 
     host.end_test(test.suite_id, test_id, test.result.clone())
         .await;
