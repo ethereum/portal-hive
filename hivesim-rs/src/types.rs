@@ -1,0 +1,46 @@
+use serde::{Deserialize, Serialize};
+
+pub type SuiteID = u32;
+pub type TestID = u32;
+
+/// StartNodeReponse is returned by the client startup endpoint.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct StartNodeResponse {
+    pub id: String, // Container ID.
+    pub ip: String, // IP address in bridge network
+}
+
+// ClientMetadata is part of the ClientDefinition and lists metadata
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ClientMetadata {
+    roles: Vec<String>,
+}
+
+// ClientDefinition is served by the /clients API endpoint to list the available clients
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ClientDefinition {
+    pub(crate) name: String,
+    version: String,
+    meta: ClientMetadata,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NodeInfoResponse {
+    pub enr: String,     // Container ID.
+    pub node_id: String, // IP address in bridge network
+    pub ip: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TestRequest {
+    pub(crate) name: String,
+    pub(crate) description: String,
+}
+
+/// Describes the outcome of a test.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct TestResult {
+    pub(crate) pass: bool,
+    pub(crate) details: String,
+}
