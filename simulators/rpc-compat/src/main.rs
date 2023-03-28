@@ -73,78 +73,84 @@ dyn_async! {
     }
 }
 
-fn test_node_info(test: &mut Test, client: Option<Client>) {
-    let client = client.expect("Client should be available for discv5_nodeInfo test");
-    let request = client
-        .rpc
-        .read()
-        .unwrap()
-        .build_request("discv5_nodeInfo", &[]);
+dyn_async! {
+    async fn test_node_info<'a>(test: &'a mut Test, client: Option<Client>) {
+       let client = client.expect("Client should be available for discv5_nodeInfo test");
+       let request = client
+            .rpc
+            .read()
+            .unwrap()
+            .build_request("discv5_nodeInfo", &[]);
 
-    let response = client.rpc.read().unwrap().send_request(request).unwrap();
-    let result = response.result;
+        let response = client.rpc.read().unwrap().send_request(request).unwrap();
+        let result = response.result;
 
-    match result {
-        None => test.fatal("Expected response not received"),
-        Some(result) => {
-            let result: Result<NodeInfoResponse, _> = serde_json::from_str(result.get());
-            if let Err(msg) = result {
-                test.fatal(&msg.to_string());
+        match result {
+            None => test.fatal("Expected response not received"),
+            Some(result) => {
+                let result: Result<NodeInfoResponse, _> = serde_json::from_str(result.get());
+                if let Err(msg) = result {
+                    test.fatal(&msg.to_string());
+                }
             }
         }
     }
 }
 
-fn test_history_local_content(test: &mut Test, client: Option<Client>) {
-    let client = client.expect("Client should be available for portal_historySendOffer test");
+dyn_async! {
+    async fn test_history_local_content<'a>(test: &'a mut Test, client: Option<Client>) {
+        let client = client.expect("Client should be available for portal_historySendOffer test");
 
-    let params = [arg(CONTENT_KEY)];
+        let params = [arg(CONTENT_KEY)];
 
-    let request = client
-        .rpc
-        .read()
-        .unwrap()
-        .build_request("portal_historyLocalContent", &params);
+        let request = client
+            .rpc
+            .read()
+            .unwrap()
+            .build_request("portal_historyLocalContent", &params);
 
-    let response = client.rpc.read().unwrap().send_request(request);
+         let response = client.rpc.read().unwrap().send_request(request);
 
-    match response {
-        Ok(resp) => {
-            let result = resp.result;
-            match result {
-                None => test.fatal("Expected response not received"),
-                Some(_) => {}
-            }
-        }
-        Err(msg) => {
-            test.fatal(&msg.to_string());
+         match response {
+             Ok(resp) => {
+                 let result = resp.result;
+                 match result {
+                    None => test.fatal("Expected response not received"),
+                    Some(_) => {}
+                 }
+             }
+             Err(msg) => {
+                 test.fatal(&msg.to_string());
+             }
         }
     }
 }
 
-fn test_history_store(test: &mut Test, client: Option<Client>) {
-    let client = client.expect("Client should be available for portal_historySendOffer test");
+dyn_async! {
+    async fn test_history_store<'a>(test: &'a mut Test, client: Option<Client>) {
+        let client = client.expect("Client should be available for portal_historySendOffer test");
 
-    let params = [arg(CONTENT_KEY), arg(CONTENT_VALUE)];
+        let params = [arg(CONTENT_KEY), arg(CONTENT_VALUE)];
 
-    let request = client
-        .rpc
-        .read()
-        .unwrap()
-        .build_request("portal_historyStore", &params);
+        let request = client
+            .rpc
+            .read()
+            .unwrap()
+            .build_request("portal_historyStore", &params);
 
-    let response = client.rpc.read().unwrap().send_request(request);
+        let response = client.rpc.read().unwrap().send_request(request);
 
-    match response {
-        Ok(resp) => {
-            let result = resp.result;
-            match result {
-                None => test.fatal("Expected response not received"),
-                Some(_) => {}
-            }
-        }
-        Err(msg) => {
-            test.fatal(&msg.to_string());
+        match response {
+             Ok(resp) => {
+                let result = resp.result;
+                match result {
+                    None => test.fatal("Expected response not received"),
+                    Some(_) => {}
+                }
+             }
+             Err(msg) => {
+                 test.fatal(&msg.to_string());
+             }
         }
     }
 }
