@@ -8,8 +8,8 @@ use std::str::FromStr;
 /// Wraps the simulation HTTP API provided by hive.
 #[derive(Clone, Debug)]
 pub struct Simulation {
-    url: String,
-    m: TestMatcher,
+    pub url: String,
+    pub m: TestMatcher,
 }
 
 impl Default for Simulation {
@@ -133,6 +133,8 @@ impl Simulation {
         (resp.id, ip)
     }
 
+    /// Returns all client types available to this simulator run. This depends on
+    /// both the available client set and the command line filters.
     pub async fn client_types(&self) -> Vec<ClientDefinition> {
         let url = format!("{}/clients", self.url);
         let client = reqwest::Client::new();

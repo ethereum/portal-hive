@@ -13,15 +13,15 @@ pub struct StartNodeResponse {
 // ClientMetadata is part of the ClientDefinition and lists metadata
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClientMetadata {
-    roles: Vec<String>,
+    pub roles: Vec<String>,
 }
 
 // ClientDefinition is served by the /clients API endpoint to list the available clients
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClientDefinition {
-    pub(crate) name: String,
-    version: String,
-    meta: ClientMetadata,
+    pub name: String,
+    pub version: String,
+    pub meta: ClientMetadata,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -34,13 +34,13 @@ pub struct NodeInfoResponse {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TestRequest {
-    pub(crate) name: String,
-    pub(crate) description: String,
+    pub name: String,
+    pub description: String,
 }
 
 /// Describes the outcome of a test.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TestResult {
-    pub(crate) pass: bool,
-    pub(crate) details: String,
+    pub pass: bool,
+    pub details: String,
 }
