@@ -1,4 +1,4 @@
-use crate::types::{SuiteID, TestID, TestResult};
+use crate::types::{ClientDefinition, SuiteID, TestID, TestResult};
 use crate::Simulation;
 use ::std::{boxed::Box, future::Future, pin::Pin};
 use async_trait::async_trait;
@@ -24,6 +24,18 @@ pub type AsyncClientTestFunc = fn(
 pub type AsyncTestFunc = fn(
     &mut Test,
     Option<Client>,
+) -> Pin<
+    Box<
+        dyn Future<Output = ()> // future API / pollable
+            + Send // required by non-single-threaded executors
+            + '_,
+    >,
+>;
+
+pub type AsyncTwoClientsTestFunc = fn(
+    &mut Test,
+    Client,
+    Client,
 ) -> Pin<
     Box<
         dyn Future<Output = ()> // future API / pollable
@@ -80,11 +92,11 @@ pub struct TestRun {
 /// A running test
 #[derive(Clone, Debug)]
 pub struct Test {
-    sim: Simulation,
-    test_id: TestID,
-    suite: Suite,
-    suite_id: SuiteID,
-    result: TestResult,
+    pub sim: Simulation,
+    pub test_id: TestID,
+    pub suite: Suite,
+    pub suite_id: SuiteID,
+    pub result: TestResult,
 }
 
 impl Test {
@@ -119,7 +131,7 @@ impl Test {
     }
 
     /// Runs a subtest of this test.
-    pub async fn run(&self, spec: TestSpec) {
+    pub async fn run(&self, spec: impl Testable) {
         spec.run_test(self.sim.clone(), self.suite_id, self.suite.clone())
             .await
     }
@@ -258,6 +270,75 @@ pub async fn run_test(
 
     // run test function
     (func)(test, client).await;
+
+    host.end_test(test.suite_id, test_id, test.result.clone())
+        .await;
+}
+
+#[derive(Clone)]
+pub struct TwoClientTestSpec<'a> {
+    // These fields are displayed in the UI. Be sure to add
+    // a meaningful description here.
+    pub name: String,
+    pub description: String,
+    // If AlwaysRun is true, the test will run even if Name does not match the test
+    // pattern. This option is useful for tests that launch a client instance and
+    // then perform further tests against it.
+    pub always_run: bool,
+    // The Run function is invoked when the test executes.
+    pub run: AsyncTwoClientsTestFunc,
+    pub client_a: &'a ClientDefinition,
+    pub client_b: &'a ClientDefinition,
+}
+
+#[async_trait]
+impl Testable for TwoClientTestSpec<'_> {
+    async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite) {
+        let test_run = TestRun {
+            suite_id,
+            suite,
+            name: self.name.to_owned(),
+            desc: self.description.to_owned(),
+            always_run: self.always_run,
+        };
+
+        run_two_client_test(
+            simulation,
+            test_run,
+            &self.client_a,
+            &self.client_b,
+            self.run,
+        )
+        .await;
+    }
+}
+
+// Write a test that runs against two clients.
+async fn run_two_client_test(
+    host: Simulation,
+    test: TestRun,
+    client_a: &ClientDefinition,
+    client_b: &ClientDefinition,
+    func: AsyncTwoClientsTestFunc,
+) {
+    // Register test on simulation server and initialize the T.
+    let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
+
+    let mut test = &mut Test {
+        sim: host.clone(),
+        test_id,
+        suite: test.suite,
+        suite_id: test.suite_id,
+        result: Default::default(),
+    };
+
+    test.result.pass = true;
+
+    let client_a = test.start_client(client_a.name.clone()).await;
+    let client_b = test.start_client(client_b.name.clone()).await;
+
+    // run test function
+    (func)(test, client_a, client_b).await;
 
     host.end_test(test.suite_id, test_id, test.result.clone())
         .await;
