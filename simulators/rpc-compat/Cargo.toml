@@ -5,13 +5,10 @@ authors = ["Ognyan Genev <ognian.genev@gmail.com>"]
 edition = "2021"
 
 [dependencies]
+ethportal-api = { git = "https://github.com/ethereum/trin" }
 hivesim = { path = "../../hivesim-rs" }
-jsonrpc = "0.14.0"
 futures = "0.3.25"
 serde_json = "1.0.87"
 tracing = "0.1.37"
 tracing-subscriber = "0.3.16"
 tokio = { version = "1", features = ["full"] }
-
-[patch.crates-io]
-jsonrpc = { git = "https://github.com/apoelstra/rust-jsonrpc.git", branch = "master" }

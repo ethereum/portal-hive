@@ -1445,7 +1445,7 @@ version = "0.1.0-alpha.1"
 dependencies = [
  "async-trait",
  "dyn-clone",
- "jsonrpc",
+ "jsonrpsee",
  "reqwest",
  "serde",
  "serde_json",
@@ -1711,17 +1711,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "445dde2150c55e483f3d8416706b97ec8e8237c307e5b7b4b8dd15e6af2a0730"
 dependencies = [
  "wasm-bindgen",
-]
-
-[[package]]
-name = "jsonrpc"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "248ea3eab5d9a37ee324b1f576f19d274ff7e56cd5206ea4755a7ef918e94fa4"
-dependencies = [
- "base64 0.13.1",
- "serde",
- "serde_json",
 ]
 
 [[package]]

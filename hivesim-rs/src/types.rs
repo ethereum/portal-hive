@@ -25,14 +25,6 @@ pub struct ClientDefinition {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct NodeInfoResponse {
-    pub enr: String,     // Container ID.
-    pub node_id: String, // IP address in bridge network
-    pub ip: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TestRequest {
     pub name: String,
     pub description: String,
