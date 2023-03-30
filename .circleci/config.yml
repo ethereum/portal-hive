@@ -42,7 +42,7 @@ jobs:
           command: ".circleci/compile-simulators.sh"
   rust-simulators:
       docker:
-        - image: cimg/rust:1.62.0
+        - image: cimg/rust:1.68.2
       steps:
         - checkout
         - run:
