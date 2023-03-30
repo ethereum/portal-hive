@@ -4,9 +4,8 @@ use ::std::{boxed::Box, future::Future, pin::Pin};
 use async_trait::async_trait;
 use core::fmt::Debug;
 use dyn_clone::DynClone;
-use jsonrpc::simple_http::SimpleHttpTransport;
+use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
 use std::net::IpAddr;
-use std::sync::{Arc, RwLock};
 
 use crate::utils::client_test_name;
 
@@ -76,7 +75,7 @@ pub struct Client {
     pub kind: String,
     pub container: String,
     pub ip: IpAddr,
-    pub rpc: Arc<RwLock<jsonrpc::Client>>,
+    pub rpc: HttpClient,
     pub test: Test,
 }
 
@@ -108,18 +107,13 @@ impl Test {
 
         let rpc_url = format!("http://{}:8545", ip);
 
-        let transport = SimpleHttpTransport::builder()
-            .url(&rpc_url)
-            .unwrap()
-            .build();
-
-        let rpc_client = jsonrpc::Client::with_transport(transport);
+        let rpc_client = HttpClientBuilder::default().build(rpc_url).unwrap();
 
         Client {
             kind: client_type,
             container,
             ip,
-            rpc: Arc::new(RwLock::new(rpc_client)),
+            rpc: rpc_client,
             test: Test {
                 sim: self.sim.clone(),
                 test_id: self.test_id,
@@ -302,14 +296,7 @@ impl Testable for TwoClientTestSpec<'_> {
             always_run: self.always_run,
         };
 
-        run_two_client_test(
-            simulation,
-            test_run,
-            &self.client_a,
-            &self.client_b,
-            self.run,
-        )
-        .await;
+        run_two_client_test(simulation, test_run, self.client_a, self.client_b, self.run).await;
     }
 }
 
