@@ -1,8 +1,8 @@
 FROM rust:1.68.2 AS builder
 
 # create a new empty shell project
-RUN USER=root cargo new --bin rpc-compat
-WORKDIR /rpc-compat
+RUN USER=root cargo new --bin portal-interop
+WORKDIR /portal-interop
 
 # copy over manifests and source to build image
 COPY Cargo.toml ./Cargo.toml
@@ -20,8 +20,8 @@ RUN wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.
 RUN dpkg -i libssl1.1_1.1.1f-1ubuntu2.17_amd64.deb
 
 # copy build artifacts from build stage
-COPY --from=builder /rpc-compat/target/release/rpc-compat .
+COPY --from=builder /portal-interop/target/release/portal-interop .
 
 ENV RUST_LOG=debug
 
-ENTRYPOINT ["./rpc-compat"]
+ENTRYPOINT ["./portal-interop"]
