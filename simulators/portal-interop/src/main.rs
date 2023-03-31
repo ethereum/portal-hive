@@ -1,6 +1,6 @@
 use ethportal_api::jsonrpsee::core::__reexports::serde_json;
 use ethportal_api::Discv5ApiClient;
-use ethportal_api::{HistoryContentItem, HistoryContentKey, HistoryNetworkApiClient};
+use ethportal_api::{HistoryContentKey, HistoryContentValue, HistoryNetworkApiClient};
 use hivesim::{dyn_async, Client, Simulation, Suite, Test, TestSpec, TwoClientTestSpec};
 use itertools::Itertools;
 use serde_json::json;
@@ -169,7 +169,7 @@ dyn_async! {
 dyn_async! {
    async fn test_offer_header<'a> (test: &'a mut Test, client_a: Client, client_b: Client) {
         let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
-        let header_with_proof_value: HistoryContentItem = serde_json::from_value(json!(HEADER_WITH_PROOF_VALUE)).unwrap();
+        let header_with_proof_value: HistoryContentValue = serde_json::from_value(json!(HEADER_WITH_PROOF_VALUE)).unwrap();
 
         let target_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
@@ -201,7 +201,7 @@ dyn_async! {
 dyn_async! {
    async fn test_offer_body<'a> (test: &'a mut Test, client_a: Client, client_b: Client) {
         let block_body_key: HistoryContentKey = serde_json::from_value(json!(BLOCK_BODY_KEY)).unwrap();
-        let block_body_value: HistoryContentItem = serde_json::from_value(json!(BLOCK_BODY_VALUE)).unwrap();
+        let block_body_value: HistoryContentValue = serde_json::from_value(json!(BLOCK_BODY_VALUE)).unwrap();
 
         let target_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
@@ -233,7 +233,7 @@ dyn_async! {
 dyn_async! {
    async fn test_offer_receipts<'a> (test: &'a mut Test, client_a: Client, client_b: Client) {
         let receipts_key: HistoryContentKey = serde_json::from_value(json!(RECEIPTS_KEY)).unwrap();
-        let receipts_value: HistoryContentItem = serde_json::from_value(json!(RECEIPTS_VALUE)).unwrap();
+        let receipts_value: HistoryContentValue = serde_json::from_value(json!(RECEIPTS_VALUE)).unwrap();
 
         let target_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,

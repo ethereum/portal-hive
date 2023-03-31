@@ -1,5 +1,5 @@
 use ethportal_api::Discv5ApiClient;
-use ethportal_api::{HistoryContentItem, HistoryContentKey, HistoryNetworkApiClient};
+use ethportal_api::{HistoryContentKey, HistoryContentValue, HistoryNetworkApiClient};
 use hivesim::{dyn_async, Client, ClientTestSpec, Simulation, Suite, Test, TestSpec};
 use serde_json::json;
 
@@ -109,7 +109,7 @@ dyn_async! {
 
         let content_key: HistoryContentKey =
         serde_json::from_value(json!(CONTENT_KEY)).unwrap();
-        let content_value: HistoryContentItem =
+        let content_value: HistoryContentValue =
         serde_json::from_value(json!(CONTENT_VALUE)).unwrap();
 
         let response = client
