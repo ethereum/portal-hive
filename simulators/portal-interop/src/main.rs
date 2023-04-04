@@ -89,10 +89,10 @@ dyn_async! {
                 }).await;
         }
 
-        // Iterate over all combinations of clients and run the tests
-        for combination in clients.iter().combinations(2) {
-            let client_a = &combination[0];
-            let client_b = &combination[1];
+        // Iterate over all permutations of clients and run the tests
+        for pair in clients.iter().permutations(2) {
+            let client_a = &pair[0];
+            let client_b = &pair[1];
 
             // Test block header with proof
             test.run(
@@ -103,17 +103,6 @@ dyn_async! {
                     run: test_offer_header,
                     client_a: &(*client_a).clone(),
                     client_b: &(*client_b).clone(),
-                }
-            ).await;
-
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Block Header {} --> {}", client_b.name, client_a.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_header,
-                    client_a: &(*client_b).clone(),
-                    client_b: &(*client_a).clone(),
                 }
             ).await;
 
@@ -129,17 +118,6 @@ dyn_async! {
                 }
             ).await;
 
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Block Body {} --> {}", client_b.name, client_a.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_body,
-                    client_a: &(*client_b).clone(),
-                    client_b: &(*client_a).clone(),
-                }
-            ).await;
-
             // Test receipts
             test.run(
                 TwoClientTestSpec {
@@ -149,17 +127,6 @@ dyn_async! {
                     run: test_offer_receipts,
                     client_a: &(*client_a).clone(),
                     client_b: &(*client_b).clone(),
-                }
-            ).await;
-
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Receipts {} --> {}", client_b.name, client_a.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_receipts,
-                    client_a: &(*client_b).clone(),
-                    client_b: &(*client_a).clone(),
                 }
             ).await;
         }
