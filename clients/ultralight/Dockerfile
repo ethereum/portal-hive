@@ -10,7 +10,6 @@ RUN npm i --omit-dev
 
 COPY . .
 
-# COPY ultralight.sh /ultralight.sh
 
 WORKDIR /
 COPY ultralight.sh /ultralight.sh
