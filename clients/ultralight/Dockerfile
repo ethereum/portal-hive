@@ -1,8 +1,19 @@
-ARG branch=latest
+FROM node:18-alpine
 
-FROM acolytec3/ultralight:$branch
+RUN apk update && apk add --no-cache bash g++ make git python3 && rm -rf /var/cache/apk/*
 
-ADD ultralight.sh /ultralight.sh
+RUN git clone --depth 1 https://github.com/ethereumjs/ultralight.git 
+
+WORKDIR /ultralight
+
+RUN npm i --omit-dev
+
+COPY . .
+
+# COPY ultralight.sh /ultralight.sh
+
+WORKDIR /
+COPY ultralight.sh /ultralight.sh
 RUN chmod +x /ultralight.sh
 
 RUN echo "latest" > /version.txt
