@@ -71,6 +71,33 @@ simulator program. All files are written to the results directory (`./workspace/
 When the simulator program exits, the simulator container and all client containers are
 stopped and removed. The `hive` command then exits as well.
 
+## Running a client built from source
+
+To run a client built from source, we just hack portal-hive a little bit. Here is an example for how
+to run against a local build of trin:
+
+Build a local image with a known tag, like `trin-dev`, using:
+
+    cd $TRIN_REPO
+    docker build --tag trin-dev --file docker/Dockerfile .
+
+Then modify the portal-hive `Dockerfile` to use the local image like so:
+
+```patch
+--- a/clients/trin/Dockerfile
++++ b/clients/trin/Dockerfile
+@@ -1,6 +1,6 @@
+ ARG branch=latest
+
+-FROM portalnetwork/trin:$branch
++FROM trin-dev
+
+ ADD trin.sh /trin.sh
+ RUN chmod +x /trin.sh
+ ```
+
+ Now, running hive normally will run against your local build of trin.
+
 ## Simulation Output Files
 
 The results of simulation runs are stored in the 'result directory'. For every test suite
