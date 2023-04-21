@@ -76,6 +76,15 @@ dyn_async! {
                 }).await;
 
                 test.run(TwoClientTestSpec {
+                    name: format!("OFFER Block Header (Shapella) {} --> {}", client.name, client.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_offer_header_shapella,
+                    client_a: &client.clone(),
+                    client_b: &client.clone(),
+                }).await;
+
+                test.run(TwoClientTestSpec {
                     name: format!("OFFER Block Body {} --> {}", client.name, client.name),
                     description: "".to_string(),
                     always_run: false,
@@ -106,6 +115,18 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_offer_header,
+                    client_a: &(*client_a).clone(),
+                    client_b: &(*client_b).clone(),
+                }
+            ).await;
+
+            // Test block header with proof after Shapella upgrade (with withdraws)
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("OFFER Block Header (Shapella) {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_offer_header_shapella,
                     client_a: &(*client_a).clone(),
                     client_b: &(*client_b).clone(),
                 }
@@ -163,6 +184,56 @@ dyn_async! {
                     PossibleHistoryContentValue::ContentPresent(content) => {
                         if content != header_with_proof_value {
                             test.fatal(&format!("Error receiving header with proof: Expected content: {header_with_proof_value:?}, Received content: {content:?}"));
+                        }
+                    }
+                    PossibleHistoryContentValue::ContentAbsent => {
+                        test.fatal("Expected content not found!");
+                    }
+                }
+            }
+            Err(err) => {
+                test.fatal(&format!("Unable to get received content: {err:?}"));
+            }
+        }
+   }
+}
+
+dyn_async! {
+   async fn test_offer_header_shapella<'a> (test: &'a mut Test, client_a: Client, client_b: Client) {
+        let header_with_proof_shapella_key = "0x0017cf53189035bbae5bce5c844355badd701aa9d2dd4b4f5ab1f9f0e8dd9fea5b";
+        let header_with_proof_shapella_value = "0x0800000039020000f9022ea0e22c56f211f03baadcc91e4eb9a24344e6848c5df4\
+        473988f893b58223f5216ca01dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347940b70b578abd96aab5e80d24d1f\
+        3c28dbde14356aa01d49150d23cc59f06491e138b7a9bf0d307bcd7bb2bab6e38754740931d6c3efa0d3deb43136a95fac91dc5a451caf62b18f0\
+        d3ffa5d8744b769ac5df6d8ef40bca0e4001611ca993adcb8948b4f114bc0985948bee0fef32c4e2292ad87356afd58b901009479b5dce9a45ebc5\
+        af9eee4f1a9cb73dfb3437b2b7edff2a5f36addcfa4319e74212ff4d469c756dfddbeb6db79d5ab5effee57ac57fdfdbbe30a1fd8ffa9fdb9ddfb1\
+        9771ffdbd7eff4bdbd3d5f97fdf571edeeafefe5a6eb55eceffd739b27ffcff7f16a38dbff45ddd25fb9d7b9bef9bae37e0bb6f7dfbf5fbf3cdfd5d\
+        bdbe57ffdfe7ef77ddb7fef267af53587bfb7ffcb3f9f673fc7eababe5fbfe77eddff945e347a6fffdfbfbe8fd7ffee79efcfcce5d77a66db3f9fabe\
+        9f3b8b1d79f9a99bb7af11f93f6f9b736f2cbf5697d57f4b6de478bdfef6759dfbbe5bebee7cfff7e9df8acdd46f9777fb47edfaf0b5f5ba74393acf\
+        f5d24bfcf389fb9eff80840103ee778401c9c3808401c9503d84643730878a4e65746865726d696e64a0d7a4a06e28abcc8ac4e0bab5f0a7e60ea7a0c3\
+        de93b2f7e7a4cc3c9a79e601868800000000000000008504b5b025b0a0c32381c919dad80afe8fe0df79460418e350725a63f67c55b27ee168ef464e5d00";
+        let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(header_with_proof_shapella_key)).unwrap();
+        let header_with_proof_value: HistoryContentValue = serde_json::from_value(json!(header_with_proof_shapella_value)).unwrap();
+
+        let target_enr = match client_b.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                test.fatal(&format!("Error getting node info: {err:?}"));
+                return;
+            }
+        };
+
+        let _ = client_a.rpc.offer(target_enr, header_with_proof_key.clone(), Some(header_with_proof_value.clone())).await;
+
+        tokio::time::sleep(Duration::from_secs(8)).await;
+
+        let received_content = client_b.rpc.local_content(header_with_proof_key).await;
+
+        match received_content {
+            Ok(possible_content) => {
+               match possible_content {
+                    PossibleHistoryContentValue::ContentPresent(content) => {
+                        if content != header_with_proof_value {
+                            test.fatal(&format!("Error receiving Shapella header with proof: Expected content: {header_with_proof_value:?}, Received content: {content:?}"));
                         }
                     }
                     PossibleHistoryContentValue::ContentAbsent => {
