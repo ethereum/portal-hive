@@ -35,10 +35,10 @@ async fn main() {
     };
 
     suite.add(TestSpec {
-        name: "OFFER/ACCEPT interop".to_string(),
+        name: "Portal Network interop".to_string(),
         description: "".to_string(),
         always_run: false,
-        run: test_offer_accept,
+        run: test_portal_interop,
         client: None,
     });
 
@@ -60,7 +60,7 @@ async fn run_suite(host: Simulation, suite: Suite) {
 }
 
 dyn_async! {
-   async fn test_offer_accept<'a> (test: &'a mut Test, _client: Option<Client>) {
+   async fn test_portal_interop<'a> (test: &'a mut Test, _client: Option<Client>) {
         // Get all available portal clients
         let clients = test.sim.client_types().await;
 
@@ -98,6 +98,15 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_offer_receipts,
+                    client_a: &client.clone(),
+                    client_b: &client.clone(),
+                }).await;
+
+                test.run(TwoClientTestSpec {
+                    name: format!("PING {} --> {}", client.name, client.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_ping,
                     client_a: &client.clone(),
                     client_b: &client.clone(),
                 }).await;
@@ -151,6 +160,17 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_offer_receipts,
+                    client_a: &(*client_a).clone(),
+                    client_b: &(*client_b).clone(),
+                }
+            ).await;
+
+            // Test portal history ping
+            test.run(TwoClientTestSpec {
+                    name: format!("PING {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_ping,
                     client_a: &(*client_a).clone(),
                     client_b: &(*client_b).clone(),
                 }
@@ -354,4 +374,22 @@ dyn_async! {
             }
         }
    }
+}
+
+dyn_async! {
+    async fn test_ping<'a>(test: &'a mut Test, client_a: Client, client_b: Client) {
+        let target_enr = match client_b.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                test.fatal(&format!("Error getting node info: {err:?}"));
+                return;
+            }
+        };
+
+        let pong = client_a.rpc.ping(target_enr, None).await;
+
+        if let Err(err) = pong {
+                test.fatal(&format!("Unable to receive pong info: {err:?}"));
+        }
+    }
 }
