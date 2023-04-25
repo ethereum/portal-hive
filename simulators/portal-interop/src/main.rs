@@ -386,7 +386,7 @@ dyn_async! {
             }
         };
 
-        let pong = client_a.rpc.ping(target_enr, None).await;
+        let pong = client_a.rpc.ping(target_enr).await;
 
         if let Err(err) = pong {
                 test.fatal(&format!("Unable to receive pong info: {err:?}"));
