@@ -2,6 +2,7 @@
 forked from ethereum [Hive](https://github.com/ethereum/hive)
 
 Hive is a system for running integration tests against Portal Network clients.
+- Test results can be seen on https://portal-hive.ethdevops.io/
 
 **To read more about hive, please check [the documentation][doc].**
 
