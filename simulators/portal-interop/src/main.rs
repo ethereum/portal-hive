@@ -1,4 +1,5 @@
 use ethportal_api::jsonrpsee::core::__reexports::serde_json;
+use ethportal_api::types::portal::ContentInfo;
 use ethportal_api::{
     Discv5ApiClient, HistoryContentKey, HistoryContentValue, HistoryNetworkApiClient,
     PossibleHistoryContentValue,
@@ -110,6 +111,15 @@ dyn_async! {
                     client_a: &client.clone(),
                     client_b: &client.clone(),
                 }).await;
+
+                test.run(TwoClientTestSpec {
+                    name: format!("FIND_CONTENT {} --> {}", client.name, client.name),
+                    description: "find content: peer immediately returns locally available content".to_string(),
+                    always_run: false,
+                    run: test_find_content_immediate_return,
+                    client_a: &client.clone(),
+                    client_b: &client.clone(),
+                }).await;
         }
 
         // Iterate over all permutations of clients and run the tests
@@ -175,8 +185,58 @@ dyn_async! {
                     client_b: &(*client_b).clone(),
                 }
             ).await;
+
+            // Test find content immediate return
+            test.run(TwoClientTestSpec {
+                    name: format!("FIND_CONTENT {} --> {}", client_a.name, client_b.name),
+                    description: "find content: peer immediately returns locally available content".to_string(),
+                    always_run: false,
+                    run: test_find_content_immediate_return,
+                    client_a: &(*client_a).clone(),
+                    client_b: &(*client_b).clone(),
+                }
+            ).await;
         }
    }
+}
+
+dyn_async! {
+    // test that a node will return content via FINDCONTENT that it has stored locally
+    async fn test_find_content_immediate_return<'a> (test: &'a mut Test, client_a: Client, client_b: Client) {
+        let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
+        let header_with_proof_value: HistoryContentValue = serde_json::from_value(json!(HEADER_WITH_PROOF_VALUE)).unwrap();
+
+        match client_b.rpc.store(header_with_proof_key.clone(), header_with_proof_value.clone()).await {
+            Ok(result) => if !result {
+                test.fatal("Unable to store header with proof for find content immediate return test");
+                return;
+            },
+            Err(err) => {
+                test.fatal(&format!("Error storing header with proof for find content immediate return test: {err:?}"));
+                return;
+            }
+        }
+
+        let target_enr = match client_b.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                test.fatal(&format!("Error getting node info: {err:?}"));
+                return;
+            }
+        };
+
+
+        let result = client_a.rpc.find_content(target_enr, header_with_proof_key.clone()).await;
+
+        match result.unwrap() {
+            ContentInfo::Content{ content: val } => {
+                assert_eq!(val, header_with_proof_value);
+            },
+            _ => {
+                test.fatal(&format!("Error: Unable to get response from FINDCONTENT request"));
+            }
+        }
+    }
 }
 
 dyn_async! {
