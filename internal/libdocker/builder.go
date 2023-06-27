@@ -57,7 +57,7 @@ func (b *Builder) BuildClientImage(ctx context.Context, name string) (string, er
 	dir := b.config.Inventory.ClientDirectory(name)
 	_, branch := libhive.SplitClientName(name)
 	tag := fmt.Sprintf("hive/clients/%s:latest", name)
-	err := b.buildImage(ctx, dir, branch, tag)
+	err := b.buildImage(ctx, dir, branch, tag, false)
 	return tag, err
 }
 
@@ -65,7 +65,7 @@ func (b *Builder) BuildClientImage(ctx context.Context, name string) (string, er
 func (b *Builder) BuildSimulatorImage(ctx context.Context, name string) (string, error) {
 	dir := b.config.Inventory.SimulatorDirectory(name)
 	tag := fmt.Sprintf("hive/simulators/%s:latest", name)
-	err := b.buildImage(ctx, dir, "", tag)
+	err := b.buildImage(ctx, dir, "", tag, true)
 	return tag, err
 }
 
@@ -202,14 +202,27 @@ func (b *Builder) ReadFile(ctx context.Context, image, path string) ([]byte, err
 
 // buildImage builds a single docker image from the specified context.
 // branch specifes a build argument to use a specific base image branch or github source branch.
-func (b *Builder) buildImage(ctx context.Context, contextDir, branch, imageTag string) error {
+// added isSim since simulators need access to local hivesim-rs which requires
+// ContextDir be the root directory of the project
+func (b *Builder) buildImage(ctx context.Context, contextDir, branch, imageTag string, isSim bool) error {
 	nocache := false
 	if b.config.NoCachePattern != nil {
 		nocache = b.config.NoCachePattern.MatchString(imageTag)
 	}
 
 	logger := b.logger.New("image", imageTag)
-	context, err := filepath.Abs(contextDir)
+	var context string
+	var err error
+	var dockerLocation string
+	if isSim {
+	    context, err = os.Executable()
+	    context = filepath.Dir(context)
+	    dockerLocation = contextDir + "/"
+	} else {
+	    context, err = filepath.Abs(contextDir)
+	    dockerLocation = ""
+	}
+
 	if err != nil {
 		logger.Error("can't find path to context directory", "err", err)
 		return err
@@ -219,7 +232,7 @@ func (b *Builder) buildImage(ctx context.Context, contextDir, branch, imageTag s
 		Name:         imageTag,
 		ContextDir:   context,
 		OutputStream: ioutil.Discard,
-		Dockerfile:   "Dockerfile",
+		Dockerfile:   dockerLocation + "Dockerfile",
 		NoCache:      nocache,
 		Pull:         b.config.PullEnabled,
 	}
