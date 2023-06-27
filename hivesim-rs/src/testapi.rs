@@ -10,13 +10,13 @@ use std::net::IpAddr;
 use crate::utils::client_test_name;
 
 pub type AsyncClientTestFunc = fn(
-    Test,
+    &mut Test,
     Client,
 ) -> Pin<
     Box<
         dyn Future<Output = ()> // future API / pollable
             + Send // required by non-single-threaded executors
-            + 'static,
+            + '_,
     >,
 >;
 
@@ -149,7 +149,7 @@ impl Test {
 
 /// ClientTestSpec is a test against a single client.
 /// When used as a test in a suite, the test runs against all available client types.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct ClientTestSpec {
     // These fields are displayed in the UI. Be sure to add
     // a meaningful description here.
@@ -195,7 +195,7 @@ async fn run_client_test(
     // Register test on simulation server and initialize the Test.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
 
-    let mut test = Test {
+    let mut test = &mut Test {
         sim: host.clone(),
         test_id,
         suite: test.suite,
@@ -208,9 +208,10 @@ async fn run_client_test(
     // run test function
     let client = test.start_client(client_name).await;
 
-    (func)(test.clone(), client).await;
+    (func)(test, client).await;
 
-    host.end_test(test.suite_id, test_id, test.result).await;
+    host.end_test(test.suite_id, test_id, test.result.clone())
+        .await;
 }
 
 #[derive(Clone)]

@@ -19,11 +19,12 @@ async fn main() {
         tests: vec![],
     };
 
-    suite.add(ClientTestSpec {
+    suite.add(TestSpec {
         name: "client launch".to_string(),
         description: "This test launches the client and collects its logs.".to_string(),
-        always_run: true,
+        always_run: false,
         run: run_all_client_tests,
+        client: None,
     });
 
     let sim = Simulation::new();
@@ -44,39 +45,35 @@ async fn run_suite(host: Simulation, suite: Suite) {
 }
 
 dyn_async! {
-    async fn run_all_client_tests<'a> (test: Test, client: Client) {
-        test.run(TestSpec {
-            name: format!("discv5_nodeInfo ({})", client.kind),
+    async fn run_all_client_tests<'a> (test: &'a mut Test, _client: Option<Client>) {
+        test.run(ClientTestSpec {
+            name: "discv5_nodeInfo".to_string(),
             description: "".to_string(),
             always_run: false,
             run: test_node_info,
-            client: Some(client.clone()),
         })
         .await;
 
-        test.run(TestSpec {
-            name: format!("portal_historyLocalContent ({})", client.kind),
+        test.run(ClientTestSpec {
+            name: "portal_historyLocalContent".to_string(),
             description: "".to_string(),
             always_run: false,
             run: test_history_local_content,
-            client: Some(client.clone()),
         })
         .await;
 
-        test.run(TestSpec {
-            name: format!("portal_historyStore ({})", client.kind),
+        test.run(ClientTestSpec {
+            name: "portal_historyStore".to_string(),
             description: "".to_string(),
             always_run: false,
             run: test_history_store,
-            client: Some(client),
         })
         .await;
     }
 }
 
 dyn_async! {
-    async fn test_node_info<'a>(test: &'a mut Test, client: Option<Client>) {
-       let client = client.expect("Client should be available for discv5_nodeInfo test");
+    async fn test_node_info<'a> (test: &'a mut Test, client: Client) {
        let response = client
             .rpc
             .node_info().await;
@@ -88,9 +85,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_local_content<'a>(test: &'a mut Test, client: Option<Client>) {
-        let client = client.expect("Client should be available for portal_historySendOffer test");
-
+    async fn test_history_local_content<'a>(test: &'a mut Test, client: Client) {
         let content_key =
         serde_json::from_value(json!(CONTENT_KEY));
 
@@ -112,9 +107,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_store<'a>(test: &'a mut Test, client: Option<Client>) {
-        let client = client.expect("Client should be available for portal_historySendOffer test");
-
+    async fn test_history_store<'a>(test: &'a mut Test, client: Client) {
         let content_key =
         serde_json::from_value(json!(CONTENT_KEY));
 
