@@ -3,3 +3,7 @@ workspace
 .idea/
 # build output
 /hive
+
+# don't include target files
+hivesim-rs/target
+simulators/*/target
