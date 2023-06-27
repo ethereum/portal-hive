@@ -1,5 +1,6 @@
 use ethportal_api::Discv5ApiClient;
 use ethportal_api::HistoryNetworkApiClient;
+use ethportal_api::PossibleHistoryContentValue::{ContentAbsent, ContentPresent};
 use hivesim::{dyn_async, Client, ClientTestSpec, Simulation, Suite, Test, TestSpec};
 use serde_json::json;
 
@@ -55,10 +56,10 @@ dyn_async! {
         .await;
 
         test.run(ClientTestSpec {
-            name: "portal_historyLocalContent".to_string(),
+            name: "portal_historyLocalContent Expect ContentAbsent".to_string(),
             description: "".to_string(),
             always_run: false,
-            run: test_history_local_content,
+            run: test_history_local_content_expect_content_absent,
         })
         .await;
 
@@ -67,6 +68,14 @@ dyn_async! {
             description: "".to_string(),
             always_run: false,
             run: test_history_store,
+        })
+        .await;
+
+        test.run(ClientTestSpec {
+            name: "portal_historyLocalContent Expect ContentPresent".to_string(),
+            description: "".to_string(),
+            always_run: false,
+            run: test_history_local_content_expect_content_present,
         })
         .await;
     }
@@ -85,7 +94,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_local_content<'a>(test: &'a mut Test, client: Client) {
+    async fn test_history_local_content_expect_content_absent<'a>(test: &'a mut Test, client: Client) {
         let content_key =
         serde_json::from_value(json!(CONTENT_KEY));
 
@@ -95,8 +104,16 @@ dyn_async! {
                     .rpc
                     .local_content(content_key).await;
 
-                if let Err(err) = response {
-                    test.fatal(&err.to_string());
+                match response {
+                    Ok(response) => {
+                        match response {
+                            ContentAbsent => (),
+                            _ => test.fatal("Expected ContentAbsent, got ContentPresent")
+                        }
+                    },
+                    Err(err) => {
+                        test.fatal(&err.to_string());
+                    },
                 }
             }
             Err(err) => {
@@ -129,6 +146,57 @@ dyn_async! {
                     Err(err) => {
                         test.fatal(&err.to_string());
                     }
+                }
+            }
+            Err(err) => {
+                test.fatal(&err.to_string());
+            }
+        }
+    }
+}
+
+dyn_async! {
+    async fn test_history_local_content_expect_content_present<'a>(test: &'a mut Test, client: Client) {
+        let content_key: Result<ethportal_api::HistoryContentKey, serde_json::Error> =
+        serde_json::from_value(json!(CONTENT_KEY));
+
+        let content_value =
+        serde_json::from_value(json!(CONTENT_VALUE));
+
+
+        match content_key {
+            Ok(content_key) => {
+                // seed content_key/content_value onto the local node to test local_content expect content present
+                match content_value {
+                    Ok(content_value) => {
+                        let response = client
+                            .rpc
+                            .store(content_key.clone(), content_value).await;
+
+                        if let Err(err) = response {
+                            test.fatal(&err.to_string());
+                        }
+                    }
+                    Err(err) => {
+                        test.fatal(&err.to_string());
+                    }
+                }
+
+                // Here we are calling local_content RPC to test if the content is present
+                let response = client
+                    .rpc
+                    .local_content(content_key).await;
+
+                match response {
+                    Ok(response) => {
+                        match response {
+                            ContentPresent(_) => (),
+                            _ => test.fatal("Expected ContentPresent, got ContentAbsent")
+                        }
+                    },
+                    Err(err) => {
+                        test.fatal(&err.to_string());
+                    },
                 }
             }
             Err(err) => {
