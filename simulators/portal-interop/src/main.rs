@@ -65,67 +65,8 @@ dyn_async! {
         // Get all available portal clients
         let clients = test.sim.client_types().await;
 
-        // Test single type of client
-        for client in &clients {
-                test.run(TwoClientTestSpec {
-                    name: format!("OFFER Block Header {} --> {}", client.name, client.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_header,
-                    client_a: &client.clone(),
-                    client_b: &client.clone(),
-                }).await;
-
-                test.run(TwoClientTestSpec {
-                    name: format!("OFFER Block Header (Shapella) {} --> {}", client.name, client.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_header_shapella,
-                    client_a: &client.clone(),
-                    client_b: &client.clone(),
-                }).await;
-
-                test.run(TwoClientTestSpec {
-                    name: format!("OFFER Block Body {} --> {}", client.name, client.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_body,
-                    client_a: &client.clone(),
-                    client_b: &client.clone(),
-                }).await;
-
-                test.run(TwoClientTestSpec {
-                    name: format!("OFFER Receipts {} --> {}", client.name, client.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_receipts,
-                    client_a: &client.clone(),
-                    client_b: &client.clone(),
-                }).await;
-
-                test.run(TwoClientTestSpec {
-                    name: format!("PING {} --> {}", client.name, client.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_ping,
-                    client_a: &client.clone(),
-                    client_b: &client.clone(),
-                }).await;
-
-                test.run(TwoClientTestSpec {
-                    name: format!("FIND_CONTENT {} --> {}", client.name, client.name),
-                    description: "find content: peer immediately returns locally available content".to_string(),
-                    always_run: false,
-                    run: test_find_content_immediate_return,
-                    client_a: &client.clone(),
-                    client_b: &client.clone(),
-                }).await;
-        }
-
-        // Iterate over all permutations of clients and run the tests
-        for pair in clients.iter().permutations(2) {
-            let client_a = &pair[0];
-            let client_b = &pair[1];
+        // Iterate over all possible pairings of clients and run the tests (including self-pairings)
+        for (client_a, client_b) in clients.iter().cartesian_product(clients.iter()) {
 
             // Test block header with proof
             test.run(
