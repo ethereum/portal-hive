@@ -119,6 +119,22 @@ dyn_async! {
             run: test_history_delete_enr_enr_present,
         })
         .await;
+
+        test.run(ClientTestSpec {
+            name: "portal_historyLookupEnr None Found".to_string(),
+            description: "".to_string(),
+            always_run: false,
+            run: test_history_lookup_enr_non_present,
+        })
+        .await;
+
+        test.run(ClientTestSpec {
+            name: "portal_historyLookupEnr ENR Found".to_string(),
+            description: "".to_string(),
+            always_run: false,
+            run: test_history_lookup_enr_enr_present,
+        })
+        .await;
     }
 }
 
@@ -345,6 +361,42 @@ dyn_async! {
         match HistoryNetworkApiClient::get_enr(&client.rpc, enr.node_id()).await {
             Ok(_) => test.fatal("GetEnr in this case is not supposed to return a value"),
             Err(_) => (),
+        }
+    }
+}
+
+dyn_async! {
+    async fn test_history_lookup_enr_non_present<'a>(test: &'a mut Test, client: Client) {
+        let (_, enr) = generate_random_remote_enr();
+
+        match HistoryNetworkApiClient::lookup_enr(&client.rpc, enr.node_id()).await {
+            Ok(_) => test.fatal("LookupEnr in this case is not supposed to return a value"),
+            Err(_) => (),
+        }
+    }
+}
+
+dyn_async! {
+    async fn test_history_lookup_enr_enr_present<'a>(test: &'a mut Test, client: Client) {
+        let (_, enr) = generate_random_remote_enr();
+
+        // seed enr into routing table
+        match HistoryNetworkApiClient::add_enr(&client.rpc, enr.clone()).await {
+            Ok(response) => match response {
+                true => (),
+                false => test.fatal("AddEnr expected to get true and instead got false")
+            },
+            Err(err) => test.fatal(&err.to_string()),
+        }
+
+        // check if we can fetch data from routing table
+        match HistoryNetworkApiClient::lookup_enr(&client.rpc, enr.node_id()).await {
+            Ok(response) => {
+                if response != enr {
+                    test.fatal("Response from LookupEnr didn't return expected Enr")
+                }
+            },
+            Err(err) => test.fatal(&err.to_string()),
         }
     }
 }
