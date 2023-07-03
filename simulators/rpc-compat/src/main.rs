@@ -1,6 +1,7 @@
 use ethportal_api::Discv5ApiClient;
 use ethportal_api::HistoryNetworkApiClient;
 use ethportal_api::PossibleHistoryContentValue::{ContentAbsent, ContentPresent};
+use ethportal_api::types::enr::generate_random_remote_enr;
 use hivesim::{dyn_async, Client, ClientTestSpec, Simulation, Suite, Test, TestSpec};
 use serde_json::json;
 
@@ -76,6 +77,14 @@ dyn_async! {
             description: "".to_string(),
             always_run: false,
             run: test_history_local_content_expect_content_present,
+        })
+        .await;
+
+        test.run(ClientTestSpec {
+            name: "portal_historyAddEnr Expect true".to_string(),
+            description: "".to_string(),
+            always_run: false,
+            run: test_history_add_enr_expect_true,
         })
         .await;
     }
@@ -202,6 +211,19 @@ dyn_async! {
             Err(err) => {
                 test.fatal(&err.to_string());
             }
+        }
+    }
+}
+
+dyn_async! {
+    async fn test_history_add_enr_expect_true<'a>(test: &'a mut Test, client: Client) {
+        let (_, enr) = generate_random_remote_enr();
+        match HistoryNetworkApiClient::add_enr(&client.rpc, enr).await {
+            Ok(response) => match response {
+                true => (),
+                false => test.fatal("AddEnr expected to get true and instead got false")
+            },
+            Err(err) => test.fatal(&err.to_string()),
         }
     }
 }
