@@ -43,6 +43,17 @@ pub type AsyncTwoClientsTestFunc = fn(
     >,
 >;
 
+pub type AsyncNClientsTestFunc = fn(
+    &mut Test,
+    Vec<Client>,
+) -> Pin<
+    Box<
+        dyn Future<Output = ()> // future API / pollable
+        + Send // required by non-single-threaded executors
+        + '_,
+    >,
+>;
+
 #[async_trait]
 pub trait Testable: DynClone + Send + Sync {
     async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite);
@@ -327,6 +338,68 @@ async fn run_two_client_test(
 
     // run test function
     (func)(test, client_a, client_b).await;
+
+    host.end_test(test.suite_id, test_id, test.result.clone())
+        .await;
+}
+
+#[derive(Clone)]
+pub struct NClientTestSpec<'a> {
+    // These fields are displayed in the UI. Be sure to add
+    // a meaningful description here.
+    pub name: String,
+    pub description: String,
+    // If AlwaysRun is true, the test will run even if Name does not match the test
+    // pattern. This option is useful for tests that launch a client instance and
+    // then perform further tests against it.
+    pub always_run: bool,
+    // The Run function is invoked when the test executes.
+    pub run: AsyncNClientsTestFunc,
+    pub clients: &'a Vec<&'a ClientDefinition>,
+}
+
+#[async_trait]
+impl Testable for NClientTestSpec<'_> {
+    async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite) {
+        let test_run = TestRun {
+            suite_id,
+            suite,
+            name: self.name.to_owned(),
+            desc: self.description.to_owned(),
+            always_run: self.always_run,
+        };
+
+        run_n_client_test(simulation, test_run, self.clients, self.run).await;
+    }
+}
+
+// Write a test that runs against N clients.
+async fn run_n_client_test(
+    host: Simulation,
+    test: TestRun,
+    clients: &Vec<&ClientDefinition>,
+    func: AsyncNClientsTestFunc,
+) {
+    // Register test on simulation server and initialize the T.
+    let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
+
+    let mut test = &mut Test {
+        sim: host.clone(),
+        test_id,
+        suite: test.suite,
+        suite_id: test.suite_id,
+        result: Default::default(),
+    };
+
+    test.result.pass = true;
+
+    let mut client_vec: Vec<Client> = Vec::new();
+    for i in clients {
+        client_vec.push(test.start_client(i.name.clone()).await);
+    }
+
+    // run test function
+    (func)(test, client_vec).await;
 
     host.end_test(test.suite_id, test_id, test.result.clone())
         .await;
