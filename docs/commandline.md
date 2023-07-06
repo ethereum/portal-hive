@@ -12,7 +12,7 @@ documentation]. You can check the installed Go version by running `go version`.
 To get hive, you first need to clone the repository to the location of your choice.
 Then you can build the hive executable.
 
-    git clone https://github.com/ogenev/portal-hive.git
+    git clone https://github.com/ethereum/portal-hive.git
     cd ./portal-hive
     go build .
 
