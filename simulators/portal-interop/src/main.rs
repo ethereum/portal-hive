@@ -140,7 +140,7 @@ dyn_async! {
 
             // Test find nodes distance zero
             test.run(TwoClientTestSpec {
-                    name: format!("FIND_NODES {} --> {}", client_a.name, client_b.name),
+                    name: format!("FIND_NODES Distance 0 {} --> {}", client_a.name, client_b.name),
                     description: "find nodes: distance zero expect called nodes enr".to_string(),
                     always_run: false,
                     run: test_find_nodes_zero_distance,
@@ -424,14 +424,20 @@ dyn_async! {
         };
 
         match client_a.rpc.find_nodes(target_enr.clone(), vec![0]).await {
-            Ok(response) => match response.get(0) {
-                Some(response_enr) => {
-                    if *response_enr != target_enr {
-                        test.fatal("Response from FindNodes didn't return expected Enr");
-                    }
-                },
-                None => test.fatal("Error find nodes zero distance wasn't supposed to return None"),
-            },
+            Ok(response) => {
+                if response.len() != 1 {
+                    test.fatal("Response from FindNodes didn't return expected length of 1");
+                }
+
+                match response.get(0) {
+                    Some(response_enr) => {
+                        if *response_enr != target_enr {
+                            test.fatal("Response from FindNodes didn't return expected Enr");
+                        }
+                    },
+                    None => test.fatal("Error find nodes zero distance wasn't supposed to return None"),
+                }
+            }
             Err(err) => test.fatal(&err.to_string()),
         }
     }
