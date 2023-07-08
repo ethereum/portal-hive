@@ -49,7 +49,7 @@ impl Simulation {
         let url = format!("{}/testsuite", self.url);
         let client = reqwest::Client::new();
         let body = TestRequest { name, description };
-        let res = client
+        client
             .post(url)
             .json(&body)
             .send()
@@ -57,9 +57,7 @@ impl Simulation {
             .unwrap()
             .json::<SuiteID>()
             .await
-            .unwrap();
-
-        res
+            .unwrap()
     }
 
     pub async fn end_suite(&self, test_suite: SuiteID) {
@@ -79,7 +77,7 @@ impl Simulation {
         let client = reqwest::Client::new();
         let body = TestRequest { name, description };
 
-        let res = client
+        client
             .post(url)
             .json(&body)
             .send()
@@ -87,9 +85,7 @@ impl Simulation {
             .unwrap()
             .json::<TestID>()
             .await
-            .unwrap();
-
-        res
+            .unwrap()
     }
 
     /// Finishes the test case, cleaning up everything, logging results, and returning

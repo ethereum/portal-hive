@@ -49,8 +49,8 @@ pub type AsyncNClientsTestFunc = fn(
 ) -> Pin<
     Box<
         dyn Future<Output = ()> // future API / pollable
-        + Send // required by non-single-threaded executors
-        + '_,
+            + Send // required by non-single-threaded executors
+            + '_,
     >,
 >;
 

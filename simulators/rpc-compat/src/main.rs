@@ -1,7 +1,7 @@
+use ethportal_api::types::enr::generate_random_remote_enr;
 use ethportal_api::Discv5ApiClient;
 use ethportal_api::HistoryNetworkApiClient;
 use ethportal_api::PossibleHistoryContentValue::{ContentAbsent, ContentPresent};
-use ethportal_api::types::enr::generate_random_remote_enr;
 use hivesim::{dyn_async, Client, ClientTestSpec, Simulation, Suite, Test, TestSpec};
 use serde_json::json;
 
@@ -280,9 +280,8 @@ dyn_async! {
     async fn test_history_get_enr_non_present<'a>(test: &'a mut Test, client: Client) {
         let (_, enr) = generate_random_remote_enr();
 
-        match HistoryNetworkApiClient::get_enr(&client.rpc, enr.node_id()).await {
-            Ok(_) => test.fatal("GetEnr in this case is not supposed to return a value"),
-            Err(_) => (),
+        if (HistoryNetworkApiClient::get_enr(&client.rpc, enr.node_id()).await).is_ok() {
+            test.fatal("GetEnr in this case is not supposed to return a value")
         }
     }
 }
@@ -358,9 +357,8 @@ dyn_async! {
         };
 
         // check if the enr was actually deleted out of the table or not
-        match HistoryNetworkApiClient::get_enr(&client.rpc, enr.node_id()).await {
-            Ok(_) => test.fatal("GetEnr in this case is not supposed to return a value"),
-            Err(_) => (),
+        if (HistoryNetworkApiClient::get_enr(&client.rpc, enr.node_id()).await).is_ok() {
+            test.fatal("GetEnr in this case is not supposed to return a value")
         }
     }
 }
@@ -369,9 +367,8 @@ dyn_async! {
     async fn test_history_lookup_enr_non_present<'a>(test: &'a mut Test, client: Client) {
         let (_, enr) = generate_random_remote_enr();
 
-        match HistoryNetworkApiClient::lookup_enr(&client.rpc, enr.node_id()).await {
-            Ok(_) => test.fatal("LookupEnr in this case is not supposed to return a value"),
-            Err(_) => (),
+        if (HistoryNetworkApiClient::lookup_enr(&client.rpc, enr.node_id()).await).is_ok() {
+            test.fatal("LookupEnr in this case is not supposed to return a value")
         }
     }
 }
