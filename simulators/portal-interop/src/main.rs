@@ -424,7 +424,7 @@ dyn_async! {
         };
 
         match client_a.rpc.find_nodes(target_enr.clone(), vec![0]).await {
-            Ok(response) => match response.enrs.get(0) {
+            Ok(response) => match response.get(0) {
                 Some(response_enr) => {
                     if *response_enr != target_enr {
                         test.fatal("Response from FindNodes didn't return expected Enr");
