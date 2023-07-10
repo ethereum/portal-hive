@@ -138,7 +138,7 @@ dyn_async! {
                 }
             ).await;
 
-            // Test find content immediate return
+            // Test find content non-present
             test.run(TwoClientTestSpec {
                     name: format!("FIND_CONTENT non present {} --> {}", client_a.name, client_b.name),
                     description: "find content: calls find content that doesn't exist".to_string(),
@@ -212,7 +212,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    // test that a node will return content via FINDCONTENT that it has stored locally
+    // test that a node will not return content via FINDCONTENT.
     async fn test_find_content_non_present<'a> (test: &'a mut Test, client_a: Client, client_b: Client) {
         let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
 
