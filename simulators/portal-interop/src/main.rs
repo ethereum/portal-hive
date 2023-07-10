@@ -184,7 +184,9 @@ dyn_async! {
             Ok(result) => {
                 match result {
                     ContentInfo::Content{ content: val } => {
-                        assert_eq!(val, header_with_proof_value);
+                        if val != header_with_proof_value {
+                            test.fatal("Error: Unexpected FINDCONTENT response: didn't return expected header with proof value");
+                        }
                     },
                     other => {
                         test.fatal(&format!("Error: Unexpected FINDCONTENT response: {other:?}"));
