@@ -138,6 +138,17 @@ dyn_async! {
                 }
             ).await;
 
+            // Test find content non-present
+            test.run(TwoClientTestSpec {
+                    name: format!("FIND_CONTENT non present {} --> {}", client_a.name, client_b.name),
+                    description: "find content: calls find content that doesn't exist".to_string(),
+                    always_run: false,
+                    run: test_find_content_non_present,
+                    client_a: &(*client_a).clone(),
+                    client_b: &(*client_b).clone(),
+                }
+            ).await;
+
             // Test find nodes distance zero
             test.run(TwoClientTestSpec {
                     name: format!("FIND_NODES Distance 0 {} --> {}", client_a.name, client_b.name),
@@ -196,6 +207,28 @@ dyn_async! {
             Err(err) => {
                 test.fatal(&format!("Error: Unable to get response from FINDCONTENT request: {err:?}"));
             }
+        }
+    }
+}
+
+dyn_async! {
+    // test that a node will not return content via FINDCONTENT.
+    async fn test_find_content_non_present<'a> (test: &'a mut Test, client_a: Client, client_b: Client) {
+        let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
+
+        let target_enr = match client_b.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                test.fatal(&format!("Error getting node info: {err:?}"));
+                return;
+            }
+        };
+
+
+        let result = client_a.rpc.find_content(target_enr, header_with_proof_key.clone()).await;
+
+        if let Ok(ContentInfo::Content{ content: _ }) = result {
+            test.fatal("Error: Unexpected FINDCONTENT response: wasn't supposed to return back content");
         }
     }
 }
@@ -444,4 +477,3 @@ dyn_async! {
         }
     }
 }
-
