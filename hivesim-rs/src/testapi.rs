@@ -6,17 +6,19 @@ use core::fmt::Debug;
 use dyn_clone::DynClone;
 use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
 use std::net::IpAddr;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use crate::utils::client_test_name;
 
 pub type AsyncClientTestFunc = fn(
-    &mut Test,
+    Arc<Mutex<Test>>,
     Client,
 ) -> Pin<
     Box<
         dyn Future<Output = ()> // future API / pollable
             + Send // required by non-single-threaded executors
-            + '_,
+            + 'static,
     >,
 >;
 
@@ -32,25 +34,25 @@ pub type AsyncTestFunc = fn(
 >;
 
 pub type AsyncTwoClientsTestFunc = fn(
-    &mut Test,
+    Arc<Mutex<Test>>,
     Client,
     Client,
 ) -> Pin<
     Box<
         dyn Future<Output = ()> // future API / pollable
             + Send // required by non-single-threaded executors
-            + '_,
+            + 'static,
     >,
 >;
 
 pub type AsyncNClientsTestFunc = fn(
-    &mut Test,
+    Arc<Mutex<Test>>,
     Vec<Client>,
 ) -> Pin<
     Box<
         dyn Future<Output = ()> // future API / pollable
             + Send // required by non-single-threaded executors
-            + '_,
+            + 'static,
     >,
 >;
 
@@ -141,9 +143,10 @@ impl Test {
             .await
     }
 
-    pub fn fatal(&mut self, msg: &str) {
+    pub fn fatal(&mut self, msg: &str) -> ! {
         self.log_failure(msg);
         self.fail();
+        panic!("Tokio thread panicked with: {}", msg)
     }
 
     /// Prints to standard output, which goes to the simulation log file.
@@ -205,23 +208,29 @@ async fn run_client_test(
 ) {
     // Register test on simulation server and initialize the Test.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
+    let suite_id = test.suite_id;
 
-    let mut test = &mut Test {
+    let test = Arc::new(Mutex::new(Test {
         sim: host.clone(),
         test_id,
         suite: test.suite,
-        suite_id: test.suite_id,
+        suite_id,
         result: Default::default(),
-    };
+    }));
 
-    test.result.pass = true;
+    test.lock().await.result.pass = true;
 
     // run test function
-    let client = test.start_client(client_name).await;
+    let client = test.lock().await.start_client(client_name).await;
 
-    (func)(test, client).await;
+    // run test function
+    let func_test = test.clone();
+    let _ = tokio::spawn(async move {
+        (func)(func_test, client).await;
+    })
+    .await;
 
-    host.end_test(test.suite_id, test_id, test.result.clone())
+    host.end_test(suite_id, test_id, test.lock().await.result.clone())
         .await;
 }
 
@@ -322,24 +331,29 @@ async fn run_two_client_test(
 ) {
     // Register test on simulation server and initialize the T.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
+    let suite_id = test.suite_id;
 
-    let mut test = &mut Test {
+    let test = Arc::new(Mutex::new(Test {
         sim: host.clone(),
         test_id,
         suite: test.suite,
-        suite_id: test.suite_id,
+        suite_id,
         result: Default::default(),
-    };
+    }));
 
-    test.result.pass = true;
+    test.lock().await.result.pass = true;
 
-    let client_a = test.start_client(client_a.name.clone()).await;
-    let client_b = test.start_client(client_b.name.clone()).await;
+    let client_a = test.lock().await.start_client(client_a.name.clone()).await;
+    let client_b = test.lock().await.start_client(client_b.name.clone()).await;
 
     // run test function
-    (func)(test, client_a, client_b).await;
+    let func_test = test.clone();
+    let _ = tokio::spawn(async move {
+        (func)(func_test, client_a, client_b).await;
+    })
+    .await;
 
-    host.end_test(test.suite_id, test_id, test.result.clone())
+    host.end_test(suite_id, test_id, test.lock().await.result.clone())
         .await;
 }
 
@@ -382,25 +396,30 @@ async fn run_n_client_test(
 ) {
     // Register test on simulation server and initialize the T.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
+    let suite_id = test.suite_id;
 
-    let mut test = &mut Test {
+    let test = Arc::new(Mutex::new(Test {
         sim: host.clone(),
         test_id,
         suite: test.suite,
-        suite_id: test.suite_id,
+        suite_id,
         result: Default::default(),
-    };
+    }));
 
-    test.result.pass = true;
+    test.lock().await.result.pass = true;
 
     let mut client_vec: Vec<Client> = Vec::new();
     for i in clients {
-        client_vec.push(test.start_client(i.name.clone()).await);
+        client_vec.push(test.lock().await.start_client(i.name.clone()).await);
     }
 
     // run test function
-    (func)(test, client_vec).await;
+    let func_test = test.clone();
+    let _ = tokio::spawn(async move {
+        (func)(func_test, client_vec).await;
+    })
+    .await;
 
-    host.end_test(test.suite_id, test_id, test.result.clone())
+    host.end_test(suite_id, test_id, test.lock().await.result.clone())
         .await;
 }
