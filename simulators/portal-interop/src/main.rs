@@ -165,26 +165,23 @@ dyn_async! {
 
 dyn_async! {
     // test that a node will return content via FINDCONTENT that it has stored locally
-    async fn test_find_content_immediate_return<'a> (test: &'a mut Test, client_a: Client, client_b: Client) {
+    async fn test_find_content_immediate_return<'a> (client_a: Client, client_b: Client) {
         let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
         let header_with_proof_value: HistoryContentValue = serde_json::from_value(json!(HEADER_WITH_PROOF_VALUE)).unwrap();
 
         match client_b.rpc.store(header_with_proof_key.clone(), header_with_proof_value.clone()).await {
             Ok(result) => if !result {
-                test.fatal("Unable to store header with proof for find content immediate return test");
-                return;
+                panic!("Unable to store header with proof for find content immediate return test");
             },
             Err(err) => {
-                test.fatal(&format!("Error storing header with proof for find content immediate return test: {err:?}"));
-                return;
+                panic!("Error storing header with proof for find content immediate return test: {err:?}");
             }
         }
 
         let target_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
-                test.fatal(&format!("Error getting node info: {err:?}"));
-                return;
+                panic!("Error getting node info: {err:?}");
             }
         };
 
@@ -196,16 +193,16 @@ dyn_async! {
                 match result {
                     ContentInfo::Content{ content: val } => {
                         if val != header_with_proof_value {
-                            test.fatal("Error: Unexpected FINDCONTENT response: didn't return expected header with proof value");
+                            panic!("Error: Unexpected FINDCONTENT response: didn't return expected header with proof value");
                         }
                     },
                     other => {
-                        test.fatal(&format!("Error: Unexpected FINDCONTENT response: {other:?}"));
+                        panic!("Error: Unexpected FINDCONTENT response: {other:?}");
                     }
                 }
             },
             Err(err) => {
-                test.fatal(&format!("Error: Unable to get response from FINDCONTENT request: {err:?}"));
+                panic!("Error: Unable to get response from FINDCONTENT request: {err:?}");
             }
         }
     }
@@ -213,14 +210,13 @@ dyn_async! {
 
 dyn_async! {
     // test that a node will not return content via FINDCONTENT.
-    async fn test_find_content_non_present<'a> (test: &'a mut Test, client_a: Client, client_b: Client) {
+    async fn test_find_content_non_present<'a> (client_a: Client, client_b: Client) {
         let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
 
         let target_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
-                test.fatal(&format!("Error getting node info: {err:?}"));
-                return;
+                panic!("Error getting node info: {err:?}");
             }
         };
 
@@ -228,21 +224,20 @@ dyn_async! {
         let result = client_a.rpc.find_content(target_enr, header_with_proof_key.clone()).await;
 
         if let Ok(ContentInfo::Content{ content: _ }) = result {
-            test.fatal("Error: Unexpected FINDCONTENT response: wasn't supposed to return back content");
+            panic!("Error: Unexpected FINDCONTENT response: wasn't supposed to return back content");
         }
     }
 }
 
 dyn_async! {
-   async fn test_offer_header<'a> (test: &'a mut Test, client_a: Client, client_b: Client) {
+   async fn test_offer_header<'a> (client_a: Client, client_b: Client) {
         let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
         let header_with_proof_value: HistoryContentValue = serde_json::from_value(json!(HEADER_WITH_PROOF_VALUE)).unwrap();
 
         let target_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
-                test.fatal(&format!("Error getting node info: {err:?}"));
-                return;
+                panic!("Error getting node info: {err:?}");
             }
         };
 
@@ -257,23 +252,23 @@ dyn_async! {
                match possible_content {
                     PossibleHistoryContentValue::ContentPresent(content) => {
                         if content != header_with_proof_value {
-                            test.fatal(&format!("Error receiving header with proof: Expected content: {header_with_proof_value:?}, Received content: {content:?}"));
+                            panic!("Error receiving header with proof: Expected content: {header_with_proof_value:?}, Received content: {content:?}");
                         }
                     }
                     PossibleHistoryContentValue::ContentAbsent => {
-                        test.fatal("Expected content not found!");
+                        panic!("Expected content not found!");
                     }
                 }
             }
             Err(err) => {
-                test.fatal(&format!("Unable to get received content: {err:?}"));
+                panic!("Unable to get received content: {err:?}");
             }
         }
    }
 }
 
 dyn_async! {
-   async fn test_offer_header_shapella<'a> (test: &'a mut Test, client_a: Client, client_b: Client) {
+   async fn test_offer_header_shapella<'a> (client_a: Client, client_b: Client) {
         let header_with_proof_shapella_key = "0x0017cf53189035bbae5bce5c844355badd701aa9d2dd4b4f5ab1f9f0e8dd9fea5b";
         let header_with_proof_shapella_value = "0x0800000039020000f9022ea0e22c56f211f03baadcc91e4eb9a24344e6848c5df4\
         473988f893b58223f5216ca01dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347940b70b578abd96aab5e80d24d1f\
@@ -291,8 +286,7 @@ dyn_async! {
         let target_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
-                test.fatal(&format!("Error getting node info: {err:?}"));
-                return;
+                panic!("Error getting node info: {err:?}");
             }
         };
 
@@ -307,23 +301,23 @@ dyn_async! {
                match possible_content {
                     PossibleHistoryContentValue::ContentPresent(content) => {
                         if content != header_with_proof_value {
-                            test.fatal(&format!("Error receiving Shapella header with proof: Expected content: {header_with_proof_value:?}, Received content: {content:?}"));
+                            panic!("Error receiving Shapella header with proof: Expected content: {header_with_proof_value:?}, Received content: {content:?}");
                         }
                     }
                     PossibleHistoryContentValue::ContentAbsent => {
-                        test.fatal("Expected content not found!");
+                        panic!("Expected content not found!");
                     }
                 }
             }
             Err(err) => {
-                test.fatal(&format!("Unable to get received content: {err:?}"));
+                panic!("Unable to get received content: {err:?}");
             }
         }
    }
 }
 
 dyn_async! {
-   async fn test_offer_body<'a> (test: &'a mut Test, client_a: Client, client_b: Client) {
+   async fn test_offer_body<'a> (client_a: Client, client_b: Client) {
         let block_body_key: HistoryContentKey = serde_json::from_value(json!(BLOCK_BODY_KEY)).unwrap();
         let block_body_value: HistoryContentValue = serde_json::from_value(json!(BLOCK_BODY_VALUE)).unwrap();
 
@@ -333,20 +327,17 @@ dyn_async! {
 
         match client_b.rpc.store(header_key.clone(), header_value.clone()).await {
             Ok(result) => if !result {
-                test.fatal("Unable to store header with proof for Block Body verification");
-                return;
+                panic!("Unable to store header with proof for Block Body verification");
             },
             Err(err) => {
-                test.fatal(&format!("Error storing header with proof for Block Body verification: {err:?}"));
-                return;
+                panic!("Error storing header with proof for Block Body verification: {err:?}");
             }
         }
 
         let target_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
-                test.fatal(&format!("Error getting node info: {err:?}"));
-                return;
+                panic!("Error getting node info: {err:?}");
             }
         };
 
@@ -361,23 +352,23 @@ dyn_async! {
                match possible_content {
                     PossibleHistoryContentValue::ContentPresent(content) => {
                         if content != block_body_value {
-                            test.fatal(&format!("Error receiving block body: Expected content: {block_body_value:?}, Received content: {content:?}"));
+                            panic!("Error receiving block body: Expected content: {block_body_value:?}, Received content: {content:?}");
                         }
                     }
                     PossibleHistoryContentValue::ContentAbsent => {
-                        test.fatal("Expected content not found!");
+                        panic!("Expected content not found!");
                     }
                 }
             }
             Err(err) => {
-                test.fatal(&format!("Unable to get received content: {err:?}"));
+                panic!("Unable to get received content: {err:?}");
             }
         }
    }
 }
 
 dyn_async! {
-   async fn test_offer_receipts<'a> (test: &'a mut Test, client_a: Client, client_b: Client) {
+   async fn test_offer_receipts<'a> (client_a: Client, client_b: Client) {
         let receipts_key: HistoryContentKey = serde_json::from_value(json!(RECEIPTS_KEY)).unwrap();
         let receipts_value: HistoryContentValue = serde_json::from_value(json!(RECEIPTS_VALUE)).unwrap();
 
@@ -387,20 +378,17 @@ dyn_async! {
 
         match client_b.rpc.store(header_key.clone(), header_value.clone()).await {
             Ok(result) => if !result {
-                test.fatal("Error storing header with proof for Receipts verification");
-                return;
+                panic!("Error storing header with proof for Receipts verification");
             },
             Err(err) => {
-                test.fatal(&format!("Error storing header with proof for Receipts verification: {err:?}"));
-                return;
+                panic!("Error storing header with proof for Receipts verification: {err:?}");
             }
         }
 
         let target_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
-                test.fatal(&format!("Error getting node info: {err:?}"));
-                return;
+                panic!("Error getting node info: {err:?}");
             }
         };
 
@@ -415,65 +403,63 @@ dyn_async! {
                match possible_content {
                     PossibleHistoryContentValue::ContentPresent(content) => {
                         if content != receipts_value {
-                            test.fatal(&format!("Error receiving block receipts: Expected content: {receipts_value:?}, Received content: {content:?}"));
+                            panic!("Error receiving block receipts: Expected content: {receipts_value:?}, Received content: {content:?}");
                         }
                     }
                     PossibleHistoryContentValue::ContentAbsent => {
-                        test.fatal("Expected content not found!");
+                        panic!("Expected content not found!");
                     }
                 }
             }
             Err(err) => {
-                test.fatal(&format!("Unable to get received content: {err:?}"));
+                panic!("Unable to get received content: {err:?}");
             }
         }
    }
 }
 
 dyn_async! {
-    async fn test_ping<'a>(test: &'a mut Test, client_a: Client, client_b: Client) {
+    async fn test_ping<'a>(client_a: Client, client_b: Client) {
         let target_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
-                test.fatal(&format!("Error getting node info: {err:?}"));
-                return;
+                panic!("Error getting node info: {err:?}");
             }
         };
 
         let pong = client_a.rpc.ping(target_enr).await;
 
         if let Err(err) = pong {
-                test.fatal(&format!("Unable to receive pong info: {err:?}"));
+                panic!("Unable to receive pong info: {err:?}");
         }
     }
 }
 
 dyn_async! {
-    async fn test_find_nodes_zero_distance<'a>(test: &'a mut Test, client_a: Client, client_b: Client) {
+    async fn test_find_nodes_zero_distance<'a>(client_a: Client, client_b: Client) {
         let target_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
-                test.fatal(&format!("Error getting node info: {err:?}"));
-                return;
+                panic!("Error getting node info: {err:?}");
             }
         };
 
         match client_a.rpc.find_nodes(target_enr.clone(), vec![0]).await {
             Ok(response) => {
                 if response.len() != 1 {
-                    test.fatal("Response from FindNodes didn't return expected length of 1");
+                    panic!("Response from FindNodes didn't return expected length of 1");
                 }
 
                 match response.get(0) {
                     Some(response_enr) => {
                         if *response_enr != target_enr {
-                            test.fatal("Response from FindNodes didn't return expected Enr");
+                            panic!("Response from FindNodes didn't return expected Enr");
                         }
                     },
-                    None => test.fatal("Error find nodes zero distance wasn't supposed to return None"),
+                    None => panic!("Error find nodes zero distance wasn't supposed to return None"),
                 }
             }
-            Err(err) => test.fatal(&err.to_string()),
+            Err(err) => panic!("{}", &err.to_string()),
         }
     }
 }
