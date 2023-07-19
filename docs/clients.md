@@ -79,7 +79,7 @@ JSON-RPC over WebSocket on port 8546, but this is not strictly required.
 ### Environment
 
 Clients must support the following environment variables. The client's entry point script
-may map these to command line flags or use them generate a config file, for example.
+may map these to command line flags or use them to generate a config file, for example.
 
 | Variable                   | Value         |                                                |
 |----------------------------|---------------|------------------------------------------------|
