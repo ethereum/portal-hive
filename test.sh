@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# This is a little test-script, that can be used for a some trial runs of clients.
+# This is a little test-script, that can be used for some trial runs of clients.
 #
 
 HIVEHOME="./"
@@ -14,12 +14,12 @@ FLAGS="$FLAGS --results-root $RESULTS "
 FLAGS="$FLAGS --sim.parallelism 1 --client.checktimelimit=20s"
 
 echo "Running the quick'n'dirty version of the Hive tests, for local development"
-echo "To the the hive viewer up, you can do"
+echo "To the hive viewer up, you can do"
 echo ""
 echo "  cd $HIVEHOME/cmd/hiveview && ln -s /tmp/TestResults/ Results && python3 -m http.server"
 echo ""
 echo "And then visit http://localhost:8000/ with your browser. "
-echo "Log-files and stuff is availalbe in $RESULTS."
+echo "Log-files and stuff are available in $RESULTS."
 echo ""
 echo ""
 

@@ -45,7 +45,7 @@ func New() *Simulation {
 	return sim
 }
 
-// NewAt creates a simulation connected to the given API endpoint. You'll will rarely need
+// NewAt creates a simulation connected to the given API endpoint. You will rarely need
 // to use this. In simulations launched by hive, use New() instead.
 func NewAt(url string) *Simulation {
 	return &Simulation{url: url}
