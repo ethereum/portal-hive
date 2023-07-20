@@ -220,7 +220,6 @@ async fn run_client_test(
 
     test.lock().await.result.pass = true;
 
-    // run test function
     let client = test.lock().await.start_client(client_name).await;
 
     // run test function
