@@ -139,19 +139,19 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_node_info<'a> (test: &'a mut Test, client: Client) {
+    async fn test_node_info<'a> (client: Client) {
        let response = client
             .rpc
             .node_info().await;
 
         if let Err(err) = response {
-            test.fatal(&format!("Expected response not received: {err}"));
+            panic!("Expected response not received: {err}");
         }
     }
 }
 
 dyn_async! {
-    async fn test_history_local_content_expect_content_absent<'a>(test: &'a mut Test, client: Client) {
+    async fn test_history_local_content_expect_content_absent<'a>(client: Client) {
         let content_key =
         serde_json::from_value(json!(CONTENT_KEY));
 
@@ -165,23 +165,23 @@ dyn_async! {
                     Ok(response) => {
                         match response {
                             ContentAbsent => (),
-                            _ => test.fatal("Expected ContentAbsent, got ContentPresent")
+                            _ => panic!("Expected ContentAbsent, got ContentPresent")
                         }
                     },
                     Err(err) => {
-                        test.fatal(&err.to_string());
+                        panic!("{}", &err.to_string());
                     },
                 }
             }
             Err(err) => {
-                test.fatal(&err.to_string());
+                panic!("{}", &err.to_string());
             }
         }
     }
 }
 
 dyn_async! {
-    async fn test_history_store<'a>(test: &'a mut Test, client: Client) {
+    async fn test_history_store<'a>(client: Client) {
         let content_key =
         serde_json::from_value(json!(CONTENT_KEY));
 
@@ -197,23 +197,23 @@ dyn_async! {
                             .store(content_key, content_value).await;
 
                         if let Err(err) = response {
-                            test.fatal(&err.to_string());
+                            panic!("{}", &err.to_string());
                         }
                     }
                     Err(err) => {
-                        test.fatal(&err.to_string());
+                        panic!("{}", &err.to_string());
                     }
                 }
             }
             Err(err) => {
-                test.fatal(&err.to_string());
+                panic!("{}", &err.to_string());
             }
         }
     }
 }
 
 dyn_async! {
-    async fn test_history_local_content_expect_content_present<'a>(test: &'a mut Test, client: Client) {
+    async fn test_history_local_content_expect_content_present<'a>(client: Client) {
         let content_key: Result<ethportal_api::HistoryContentKey, serde_json::Error> =
         serde_json::from_value(json!(CONTENT_KEY));
 
@@ -231,11 +231,11 @@ dyn_async! {
                             .store(content_key.clone(), content_value).await;
 
                         if let Err(err) = response {
-                            test.fatal(&err.to_string());
+                            panic!("{}", &err.to_string());
                         }
                     }
                     Err(err) => {
-                        test.fatal(&err.to_string());
+                        panic!("{}", &err.to_string());
                     }
                 }
 
@@ -248,152 +248,152 @@ dyn_async! {
                     Ok(response) => {
                         match response {
                             ContentPresent(_) => (),
-                            _ => test.fatal("Expected ContentPresent, got ContentAbsent")
+                            _ => panic!("Expected ContentPresent, got ContentAbsent")
                         }
                     },
                     Err(err) => {
-                        test.fatal(&err.to_string());
+                        panic!("{}", &err.to_string());
                     },
                 }
             }
             Err(err) => {
-                test.fatal(&err.to_string());
+                panic!("{}", &err.to_string());
             }
         }
     }
 }
 
 dyn_async! {
-    async fn test_history_add_enr_expect_true<'a>(test: &'a mut Test, client: Client) {
+    async fn test_history_add_enr_expect_true<'a>(client: Client) {
         let (_, enr) = generate_random_remote_enr();
         match HistoryNetworkApiClient::add_enr(&client.rpc, enr).await {
             Ok(response) => match response {
                 true => (),
-                false => test.fatal("AddEnr expected to get true and instead got false")
+                false => panic!("AddEnr expected to get true and instead got false")
             },
-            Err(err) => test.fatal(&err.to_string()),
+            Err(err) => panic!("{}", &err.to_string()),
         }
     }
 }
 
 dyn_async! {
-    async fn test_history_get_enr_non_present<'a>(test: &'a mut Test, client: Client) {
+    async fn test_history_get_enr_non_present<'a>(client: Client) {
         let (_, enr) = generate_random_remote_enr();
 
         if (HistoryNetworkApiClient::get_enr(&client.rpc, enr.node_id()).await).is_ok() {
-            test.fatal("GetEnr in this case is not supposed to return a value")
+            panic!("GetEnr in this case is not supposed to return a value")
         }
     }
 }
 
 dyn_async! {
-    async fn test_history_get_enr_enr_present<'a>(test: &'a mut Test, client: Client) {
+    async fn test_history_get_enr_enr_present<'a>(client: Client) {
         let (_, enr) = generate_random_remote_enr();
 
         // seed enr into routing table
         match HistoryNetworkApiClient::add_enr(&client.rpc, enr.clone()).await {
             Ok(response) => match response {
                 true => (),
-                false => test.fatal("AddEnr expected to get true and instead got false")
+                false => panic!("AddEnr expected to get true and instead got false")
             },
-            Err(err) => test.fatal(&err.to_string()),
+            Err(err) => panic!("{}", &err.to_string()),
         }
 
         // check if we can fetch data from routing table
         match HistoryNetworkApiClient::get_enr(&client.rpc, enr.node_id()).await {
             Ok(response) => {
                 if response != enr {
-                    test.fatal("Response from GetEnr didn't return expected Enr")
+                    panic!("Response from GetEnr didn't return expected Enr")
                 }
             },
-            Err(err) => test.fatal(&err.to_string()),
+            Err(err) => panic!("{}", &err.to_string()),
         }
     }
 }
 
 dyn_async! {
-    async fn test_history_delete_enr_non_present<'a>(test: &'a mut Test, client: Client) {
+    async fn test_history_delete_enr_non_present<'a>(client: Client) {
         let (_, enr) = generate_random_remote_enr();
         match HistoryNetworkApiClient::delete_enr(&client.rpc, enr.node_id()).await {
             Ok(response) => match response {
-                true => test.fatal("DeleteEnr expected to get false and instead got true"),
+                true => panic!("DeleteEnr expected to get false and instead got true"),
                 false => ()
             },
-            Err(err) => test.fatal(&err.to_string()),
+            Err(err) => panic!("{}", &err.to_string()),
         };
     }
 }
 
 dyn_async! {
-    async fn test_history_delete_enr_enr_present<'a>(test: &'a mut Test, client: Client) {
+    async fn test_history_delete_enr_enr_present<'a>(client: Client) {
         let (_, enr) = generate_random_remote_enr();
 
         // seed enr into routing table
         match HistoryNetworkApiClient::add_enr(&client.rpc, enr.clone()).await {
             Ok(response) => match response {
                 true => (),
-                false => test.fatal("AddEnr expected to get true and instead got false")
+                false => panic!("AddEnr expected to get true and instead got false")
             },
-            Err(err) => test.fatal(&err.to_string()),
+            Err(err) => panic!("{}", &err.to_string()),
         }
 
         // check if data was seeded into the table
         match HistoryNetworkApiClient::get_enr(&client.rpc, enr.node_id()).await {
             Ok(response) => {
                 if response != enr {
-                    test.fatal("Response from GetEnr didn't return expected Enr")
+                    panic!("Response from GetEnr didn't return expected Enr")
                 }
             },
-            Err(err) => test.fatal(&err.to_string()),
+            Err(err) => panic!("{}", &err.to_string()),
         }
 
         // delete the data from routing table
         match HistoryNetworkApiClient::delete_enr(&client.rpc, enr.node_id()).await {
             Ok(response) => match response {
                 true => (),
-                false => test.fatal("DeleteEnr expected to get true and instead got false")
+                false => panic!("DeleteEnr expected to get true and instead got false")
             },
-            Err(err) => test.fatal(&err.to_string()),
+            Err(err) => panic!("{}", &err.to_string()),
         };
 
         // check if the enr was actually deleted out of the table or not
         if (HistoryNetworkApiClient::get_enr(&client.rpc, enr.node_id()).await).is_ok() {
-            test.fatal("GetEnr in this case is not supposed to return a value")
+            panic!("GetEnr in this case is not supposed to return a value")
         }
     }
 }
 
 dyn_async! {
-    async fn test_history_lookup_enr_non_present<'a>(test: &'a mut Test, client: Client) {
+    async fn test_history_lookup_enr_non_present<'a>(client: Client) {
         let (_, enr) = generate_random_remote_enr();
 
         if (HistoryNetworkApiClient::lookup_enr(&client.rpc, enr.node_id()).await).is_ok() {
-            test.fatal("LookupEnr in this case is not supposed to return a value")
+            panic!("LookupEnr in this case is not supposed to return a value")
         }
     }
 }
 
 dyn_async! {
-    async fn test_history_lookup_enr_enr_present<'a>(test: &'a mut Test, client: Client) {
+    async fn test_history_lookup_enr_enr_present<'a>(client: Client) {
         let (_, enr) = generate_random_remote_enr();
 
         // seed enr into routing table
         match HistoryNetworkApiClient::add_enr(&client.rpc, enr.clone()).await {
             Ok(response) => match response {
                 true => (),
-                false => test.fatal("AddEnr expected to get true and instead got false")
+                false => panic!("AddEnr expected to get true and instead got false")
             },
-            Err(err) => test.fatal(&err.to_string()),
+            Err(err) => panic!("{}", &err.to_string()),
         }
 
         // check if we can fetch data from routing table
         match HistoryNetworkApiClient::lookup_enr(&client.rpc, enr.node_id()).await {
             Ok(response) => {
                 if response != enr {
-                    test.fatal("Response from LookupEnr didn't return expected Enr")
+                    panic!("Response from LookupEnr didn't return expected Enr")
                 }
             },
-            Err(err) => test.fatal(&err.to_string()),
+            Err(err) => panic!("{}", &err.to_string()),
         }
     }
 }

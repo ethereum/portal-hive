@@ -7,18 +7,7 @@ use dyn_clone::DynClone;
 use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
 use std::net::IpAddr;
 
-use crate::utils::client_test_name;
-
-pub type AsyncClientTestFunc = fn(
-    &mut Test,
-    Client,
-) -> Pin<
-    Box<
-        dyn Future<Output = ()> // future API / pollable
-            + Send // required by non-single-threaded executors
-            + '_,
-    >,
->;
+use crate::utils::{client_test_name, extract_test_results};
 
 pub type AsyncTestFunc = fn(
     &mut Test,
@@ -31,26 +20,34 @@ pub type AsyncTestFunc = fn(
     >,
 >;
 
+pub type AsyncClientTestFunc = fn(
+    Client,
+) -> Pin<
+    Box<
+        dyn Future<Output = ()> // future API / pollable
+            + Send // required by non-single-threaded executors
+            + 'static,
+    >,
+>;
+
 pub type AsyncTwoClientsTestFunc = fn(
-    &mut Test,
     Client,
     Client,
 ) -> Pin<
     Box<
         dyn Future<Output = ()> // future API / pollable
             + Send // required by non-single-threaded executors
-            + '_,
+            + 'static,
     >,
 >;
 
 pub type AsyncNClientsTestFunc = fn(
-    &mut Test,
     Vec<Client>,
 ) -> Pin<
     Box<
         dyn Future<Output = ()> // future API / pollable
             + Send // required by non-single-threaded executors
-            + '_,
+            + 'static,
     >,
 >;
 
@@ -140,22 +137,6 @@ impl Test {
         spec.run_test(self.sim.clone(), self.suite_id, self.suite.clone())
             .await
     }
-
-    pub fn fatal(&mut self, msg: &str) {
-        self.log_failure(msg);
-        self.fail();
-    }
-
-    /// Prints to standard output, which goes to the simulation log file.
-    fn log_failure(&mut self, msg: &str) {
-        println!("{msg}");
-        self.result.details = msg.to_owned()
-    }
-
-    // Fail signals that the test has failed.
-    fn fail(&mut self) {
-        self.result.pass = false
-    }
 }
 
 /// ClientTestSpec is a test against a single client.
@@ -205,24 +186,29 @@ async fn run_client_test(
 ) {
     // Register test on simulation server and initialize the Test.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
+    let suite_id = test.suite_id;
 
     let mut test = &mut Test {
         sim: host.clone(),
         test_id,
         suite: test.suite,
-        suite_id: test.suite_id,
+        suite_id,
         result: Default::default(),
     };
 
     test.result.pass = true;
 
-    // run test function
     let client = test.start_client(client_name).await;
 
-    (func)(test, client).await;
+    // run test function
+    let test_result = extract_test_results(
+        tokio::spawn(async move {
+            (func)(client).await;
+        })
+        .await,
+    );
 
-    host.end_test(test.suite_id, test_id, test.result.clone())
-        .await;
+    host.end_test(suite_id, test_id, test_result).await;
 }
 
 #[derive(Clone)]
@@ -322,12 +308,13 @@ async fn run_two_client_test(
 ) {
     // Register test on simulation server and initialize the T.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
+    let suite_id = test.suite_id;
 
     let mut test = &mut Test {
         sim: host.clone(),
         test_id,
         suite: test.suite,
-        suite_id: test.suite_id,
+        suite_id,
         result: Default::default(),
     };
 
@@ -337,10 +324,14 @@ async fn run_two_client_test(
     let client_b = test.start_client(client_b.name.clone()).await;
 
     // run test function
-    (func)(test, client_a, client_b).await;
+    let test_result = extract_test_results(
+        tokio::spawn(async move {
+            (func)(client_a, client_b).await;
+        })
+        .await,
+    );
 
-    host.end_test(test.suite_id, test_id, test.result.clone())
-        .await;
+    host.end_test(suite_id, test_id, test_result).await;
 }
 
 #[derive(Clone)]
@@ -382,12 +373,13 @@ async fn run_n_client_test(
 ) {
     // Register test on simulation server and initialize the T.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
+    let suite_id = test.suite_id;
 
     let mut test = &mut Test {
         sim: host.clone(),
         test_id,
         suite: test.suite,
-        suite_id: test.suite_id,
+        suite_id,
         result: Default::default(),
     };
 
@@ -399,8 +391,12 @@ async fn run_n_client_test(
     }
 
     // run test function
-    (func)(test, client_vec).await;
+    let test_result = extract_test_results(
+        tokio::spawn(async move {
+            (func)(client_vec).await;
+        })
+        .await,
+    );
 
-    host.end_test(test.suite_id, test_id, test.result.clone())
-        .await;
+    host.end_test(suite_id, test_id, test_result).await;
 }
