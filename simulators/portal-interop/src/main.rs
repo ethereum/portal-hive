@@ -220,11 +220,28 @@ dyn_async! {
             }
         };
 
-
         let result = client_a.rpc.find_content(target_enr, header_with_proof_key.clone()).await;
 
         if let Ok(ContentInfo::Content{ content: _ }) = result {
             panic!("Error: Unexpected FINDCONTENT response: wasn't supposed to return back content");
+        }
+
+        match result {
+            Ok(result) => {
+                match result {
+                    ContentInfo::Enrs{ enrs: val } => {
+                        if !val.is_empty() {
+                            panic!("Error: Unexpected FINDCONTENT response: expected ContentInfo::Enrs length 0 got {}", val.len());
+                        }
+                    },
+                    other => {
+                        panic!("Error: Unexpected FINDCONTENT response: {other:?}");
+                    }
+                }
+            },
+            Err(err) => {
+                panic!("Error: Unable to get response from FINDCONTENT request: {err:?}");
+            }
         }
     }
 }
