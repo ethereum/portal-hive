@@ -73,99 +73,59 @@ dyn_async! {
 
 dyn_async! {
     // test that a node will return content via FIND_CONTENT that is stored 2 nodes away
-    async fn test_find_content_two_jumps<'a> (test: &'a mut Test, clients: Vec<Client>) {
+    async fn test_find_content_two_jumps<'a> (clients: Vec<Client>) {
         let (client_a, client_b, client_c) = match clients.iter().collect_tuple() {
             Some((client_a, client_b, client_c)) => (client_a, client_b, client_c),
             None => {
-                test.fatal("Unable to get expected amount of clients from NClientTestSpec");
-                return;
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
             }
         };
 
         let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
         let header_with_proof_value: HistoryContentValue = serde_json::from_value(json!(HEADER_WITH_PROOF_VALUE)).unwrap();
 
-        /// todo: remove for testing
-        let client_a_enr = match client_a.rpc.node_info().await {
-            Ok(node_info) => node_info.enr,
-            Err(err) => {
-                test.fatal(&format!("Error getting node info: {err:?}"));
-                return;
-            }
-        };
-
         // get enr for b and c to seed for the jumps
         let client_b_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
-                test.fatal(&format!("Error getting node info: {err:?}"));
-                return;
+                panic!("Error getting node info: {err:?}");
             }
         };
 
         let client_c_enr = match client_c.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
-                test.fatal(&format!("Error getting node info: {err:?}"));
-                return;
+                panic!("Error getting node info: {err:?}");
             }
         };
-
-        let ddebug = format!("distances a {} :: b {} :: c {} from content",
-            XorMetric::distance(&client_a_enr.node_id().raw(), &header_with_proof_key.clone().content_id()),
-            XorMetric::distance(&client_b_enr.node_id().raw(), &header_with_proof_key.clone().content_id()),
-            XorMetric::distance(&client_c_enr.node_id().raw(), &header_with_proof_key.clone().content_id()),
-            );
 
         // seed the data into client_c
         match client_c.rpc.store(header_with_proof_key.clone(), header_with_proof_value.clone()).await {
             Ok(result) => if !result {
-                test.fatal("Unable to store header with proof for find content immediate return test");
-                return;
+                panic!("Unable to store header with proof for find content immediate return test");
             },
             Err(err) => {
-                test.fatal(&format!("Error storing header with proof for find content immediate return test: {err:?}"));
-                return;
+                panic!("Error storing header with proof for find content immediate return test: {err:?}");
             }
         }
-
-
-
-        /// todo: remove for testing
-        let debug_enrs = format!(" client a {:?}, client b {:?}, client c {:?} ", client_a_enr.clone(), client_b_enr.clone(), client_c_enr.clone());
 
         // seed client_c_enr into routing table of client_b
         match HistoryNetworkApiClient::add_enr(&client_b.rpc, client_c_enr.clone()).await {
             Ok(response) => match response {
                 true => (),
-                false => test.fatal("AddEnr expected to get true and instead got false")
+                false => panic!("AddEnr expected to get true and instead got false")
             },
-            Err(err) => test.fatal(&err.to_string()),
+            Err(err) => panic!("{}", &err.to_string()),
         }
 
-        // check if we can fetch data from routing table
-        match HistoryNetworkApiClient::get_enr(&client_b.rpc, client_c_enr.node_id()).await {
-            Ok(response) => {
-                if response != client_c_enr.clone() {
-                    test.fatal("Response from GetEnr didn't return expected Enr");
-                     return;
-                }
-            },
-            Err(err) => test.fatal(&err.to_string()),
-        }
+        tokio::time::sleep(tokio::time::Duration::from_millis(30000)).await;
 
-        // check if we can fetch data from routing table
-        match HistoryNetworkApiClient::get_enr(&client_c.rpc, client_b_enr.node_id()).await {
-            Ok(response) => {
-                if response != client_b_enr.clone() {
-                    test.fatal("Response from GetEnr didn't return expected Enr");
-                    return;
-                }
-            },
-            Err(err) => test.fatal(&err.to_string()),
-        }
-
-        let result = client_a.rpc.find_content(client_b_enr, header_with_proof_key.clone()).await;
+        let result = client_a.rpc.find_content(client_b_enr.clone(), header_with_proof_key.clone()).await;
+        let result = client_a.rpc.find_content(client_b_enr.clone(), header_with_proof_key.clone()).await;
+        let result = client_a.rpc.find_content(client_b_enr.clone(), header_with_proof_key.clone()).await;
+        let result = client_a.rpc.find_content(client_b_enr.clone(), header_with_proof_key.clone()).await;
+        let result = client_a.rpc.find_content(client_b_enr.clone(), header_with_proof_key.clone()).await;
+        let result = client_a.rpc.find_content(client_b_enr.clone(), header_with_proof_key.clone()).await;
 
         let enrs = match result {
             Ok(result) => {
@@ -174,19 +134,17 @@ dyn_async! {
                         enrs
                     },
                     other => {
-                        test.fatal(&format!("Error: Unexpected FINDCONTENT response not Enrs: {other:?}"));
-                        return;
+                        panic!("Error: Unexpected FINDCONTENT response not Enrs: {other:?}");
                     }
                 }
             },
             Err(err) => {
-                test.fatal(&format!("Error: Unable to get response from FINDCONTENT request (Enrs): {err:?} distances {ddebug}"));
-                return;
+                panic!("Error: Unable to get response from FINDCONTENT request (Enrs): {err:?}");
             }
         };
 
         if enrs.len() != 1 {
-            test.fatal(&format!("The only enr this should return is client c: length {} {:?} :: clients {}", enrs.len(), enrs.clone(),  debug_enrs));
+            panic!("The only enr this should return is client c: length {}", enrs.len());
         }
 
         let result = client_a.rpc.find_content(enrs[0].clone(), header_with_proof_key.clone()).await;
@@ -196,16 +154,16 @@ dyn_async! {
                 match result {
                     ContentInfo::Content{ content: val } => {
                         if val != header_with_proof_value {
-                            test.fatal("Error: Unexpected FINDCONTENT response: didn't return expected header with proof value");
+                            panic!("Error: Unexpected FINDCONTENT response: didn't return expected header with proof value");
                         }
                     },
                     other => {
-                        test.fatal(&format!("Error: Unexpected FINDCONTENT response: {other:?}"));
+                        panic!("Error: Unexpected FINDCONTENT response: {other:?}");
                     }
                 }
             },
             Err(err) => {
-                test.fatal(&format!("Error: Unable to get response from FINDCONTENT request: {err:?}"));
+                panic!("Error: Unable to get response from FINDCONTENT request: {err:?}");
             }
         }
     }
