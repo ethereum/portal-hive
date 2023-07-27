@@ -1,8 +1,10 @@
 use ethportal_api::jsonrpsee::core::__reexports::serde_json;
+use ethportal_api::types::distance::{Metric, XorMetric};
 use ethportal_api::types::portal::ContentInfo;
-use ethportal_api::types::distance::XorMetric;
-use ethportal_api::types::distance::Metric;
-use ethportal_api::{Discv5ApiClient, HistoryContentKey, HistoryContentValue, HistoryNetworkApiClient, OverlayContentKey};
+use ethportal_api::{
+    Discv5ApiClient, HistoryContentKey, HistoryContentValue, HistoryNetworkApiClient,
+    OverlayContentKey,
+};
 use hivesim::{dyn_async, Client, NClientTestSpec, Simulation, Suite, Test, TestSpec};
 use itertools::Itertools;
 use serde_json::json;
@@ -99,6 +101,15 @@ dyn_async! {
             }
         };
 
+        // seed client_c_enr into routing table of client_b
+        match HistoryNetworkApiClient::add_enr(&client_b.rpc, client_c_enr.clone()).await {
+            Ok(response) => match response {
+                true => (),
+                false => panic!("AddEnr expected to get true and instead got false")
+            },
+            Err(err) => panic!("{}", &err.to_string()),
+        }
+
         // seed the data into client_c
         match client_c.rpc.store(header_with_proof_key.clone(), header_with_proof_value.clone()).await {
             Ok(result) => if !result {
@@ -109,61 +120,50 @@ dyn_async! {
             }
         }
 
-        // seed client_c_enr into routing table of client_b
-        match HistoryNetworkApiClient::add_enr(&client_b.rpc, client_c_enr.clone()).await {
-            Ok(response) => match response {
-                true => (),
-                false => panic!("AddEnr expected to get true and instead got false")
-            },
-            Err(err) => panic!("{}", &err.to_string()),
-        }
-
-        tokio::time::sleep(tokio::time::Duration::from_millis(30000)).await;
-
-        let result = client_a.rpc.find_content(client_b_enr.clone(), header_with_proof_key.clone()).await;
-        let result = client_a.rpc.find_content(client_b_enr.clone(), header_with_proof_key.clone()).await;
-        let result = client_a.rpc.find_content(client_b_enr.clone(), header_with_proof_key.clone()).await;
-        let result = client_a.rpc.find_content(client_b_enr.clone(), header_with_proof_key.clone()).await;
-        let result = client_a.rpc.find_content(client_b_enr.clone(), header_with_proof_key.clone()).await;
-        let result = client_a.rpc.find_content(client_b_enr.clone(), header_with_proof_key.clone()).await;
-
-        let enrs = match result {
+        let enrs = match client_a.rpc.find_content(client_b_enr.clone(), header_with_proof_key.clone()).await {
             Ok(result) => {
                 match result {
                     ContentInfo::Enrs{ enrs } => {
                         enrs
                     },
                     other => {
-                        panic!("Error: Unexpected FINDCONTENT response not Enrs: {other:?}");
+                        panic!("Error: (Enrs) Unexpected FINDCONTENT response not: {other:?}");
                     }
                 }
             },
             Err(err) => {
-                panic!("Error: Unable to get response from FINDCONTENT request (Enrs): {err:?}");
+                panic!("Error: (Enrs) Unable to get response from FINDCONTENT request: {err:?}");
             }
         };
 
-        if enrs.len() != 1 {
-            panic!("The only enr this should return is client c: length {}", enrs.len());
-        }
+        // A list of ENR records of nodes that are closer than the recipient is to the requested content
+        // If xor content node b is less then xor content node c then we should get an empty list of enrs
+        // else we should get 1 enr and be able to find our seeded content
+        if XorMetric::distance(&header_with_proof_key.content_id(), &client_b_enr.node_id().raw()) < XorMetric::distance(&header_with_proof_key.content_id(), &client_c_enr.node_id().raw()) {
+            if !enrs.is_empty() {
+                panic!("If xor content node b is less then xor content node c, enrs should be 0 instead god: length {}", enrs.len());
+            }
+        } else {
+            if enrs.len() != 1 {
+                panic!("Known node is closer to content, Enrs returned should be 0 instead got: length {}", enrs.len());
+            }
 
-        let result = client_a.rpc.find_content(enrs[0].clone(), header_with_proof_key.clone()).await;
-
-        match result {
-            Ok(result) => {
-                match result {
-                    ContentInfo::Content{ content: val } => {
-                        if val != header_with_proof_value {
-                            panic!("Error: Unexpected FINDCONTENT response: didn't return expected header with proof value");
+            match client_a.rpc.find_content(enrs[0].clone(), header_with_proof_key.clone()).await {
+                Ok(result) => {
+                    match result {
+                        ContentInfo::Content{ content: val } => {
+                            if val != header_with_proof_value {
+                                panic!("Error: Unexpected FINDCONTENT response: didn't return expected header with proof value");
+                            }
+                        },
+                        other => {
+                            panic!("Error: Unexpected FINDCONTENT response: {other:?}");
                         }
-                    },
-                    other => {
-                        panic!("Error: Unexpected FINDCONTENT response: {other:?}");
                     }
+                },
+                Err(err) => {
+                    panic!("Error: Unable to get response from FINDCONTENT request: {err:?}");
                 }
-            },
-            Err(err) => {
-                panic!("Error: Unable to get response from FINDCONTENT request: {err:?}");
             }
         }
     }
