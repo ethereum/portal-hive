@@ -18,9 +18,8 @@ async fn main() {
 
     let mut suite = Suite {
         name: "portal-mesh".to_string(),
-        description:
-            "The portal mesh test suite runs a set of scenarios to test 3 clients"
-                .to_string(),
+        description: "The portal mesh test suite runs a set of scenarios to test 3 clients"
+            .to_string(),
         tests: vec![],
     };
 
