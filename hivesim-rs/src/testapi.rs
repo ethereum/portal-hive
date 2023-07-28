@@ -107,10 +107,15 @@ pub struct Test {
 }
 
 impl Test {
-    pub async fn start_client(&self, client_type: String) -> Client {
+    pub async fn start_client(&self, client_type: String, private_key: Option<&String>) -> Client {
         let (container, ip) = self
             .sim
-            .start_client(self.suite_id, self.test_id, client_type.clone())
+            .start_client(
+                self.suite_id,
+                self.test_id,
+                client_type.clone(),
+                private_key,
+            )
             .await;
 
         let rpc_url = format!("http://{}:8545", ip);
@@ -198,7 +203,7 @@ async fn run_client_test(
 
     test.result.pass = true;
 
-    let client = test.start_client(client_name).await;
+    let client = test.start_client(client_name, None).await;
 
     // run test function
     let test_result = extract_test_results(
@@ -320,8 +325,8 @@ async fn run_two_client_test(
 
     test.result.pass = true;
 
-    let client_a = test.start_client(client_a.name.clone()).await;
-    let client_b = test.start_client(client_b.name.clone()).await;
+    let client_a = test.start_client(client_a.name.clone(), None).await;
+    let client_b = test.start_client(client_b.name.clone(), None).await;
 
     // run test function
     let test_result = extract_test_results(
@@ -346,6 +351,10 @@ pub struct NClientTestSpec<'a> {
     pub always_run: bool,
     // The Run function is invoked when the test executes.
     pub run: AsyncNClientsTestFunc,
+    // length of private key array should match clients array
+    // this attribute is optional and is used for tests which need node_ids relative to the
+    // content within the test
+    pub private_keys: Option<&'a Vec<Option<&'a String>>>,
     pub clients: &'a Vec<&'a ClientDefinition>,
 }
 
@@ -360,7 +369,14 @@ impl Testable for NClientTestSpec<'_> {
             always_run: self.always_run,
         };
 
-        run_n_client_test(simulation, test_run, self.clients, self.run).await;
+        run_n_client_test(
+            simulation,
+            test_run,
+            self.private_keys,
+            self.clients,
+            self.run,
+        )
+        .await;
     }
 }
 
@@ -368,7 +384,8 @@ impl Testable for NClientTestSpec<'_> {
 async fn run_n_client_test(
     host: Simulation,
     test: TestRun,
-    clients: &Vec<&ClientDefinition>,
+    private_keys: Option<&Vec<Option<&String>>>,
+    clients: &[&ClientDefinition],
     func: AsyncNClientsTestFunc,
 ) {
     // Register test on simulation server and initialize the T.
@@ -386,8 +403,13 @@ async fn run_n_client_test(
     test.result.pass = true;
 
     let mut client_vec: Vec<Client> = Vec::new();
-    for i in clients {
-        client_vec.push(test.start_client(i.name.clone()).await);
+    for (index, client) in clients.iter().enumerate() {
+        let private_key = if let Some(private_keys) = private_keys {
+            private_keys[index]
+        } else {
+            None
+        };
+        client_vec.push(test.start_client(client.name.clone(), private_key).await);
     }
 
     // run test function

@@ -1,9 +1,7 @@
 use ethportal_api::jsonrpsee::core::__reexports::serde_json;
-use ethportal_api::types::distance::{Metric, XorMetric};
 use ethportal_api::types::portal::ContentInfo;
 use ethportal_api::{
     Discv5ApiClient, HistoryContentKey, HistoryContentValue, HistoryNetworkApiClient,
-    OverlayContentKey,
 };
 use hivesim::{dyn_async, Client, NClientTestSpec, Simulation, Suite, Test, TestSpec};
 use itertools::Itertools;
@@ -19,15 +17,15 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let mut suite = Suite {
-        name: "portal-scenarios".to_string(),
+        name: "portal-mesh".to_string(),
         description:
-            "The portal scenarios test suite runs a set of scenarios to test 3 or more clients"
+            "The portal mesh test suite runs a set of scenarios to test 3 clients"
                 .to_string(),
         tests: vec![],
     };
 
     suite.add(TestSpec {
-        name: "Portal Network scenarios".to_string(),
+        name: "Portal Network mesh".to_string(),
         description: "".to_string(),
         always_run: false,
         run: test_portal_scenarios,
@@ -56,16 +54,31 @@ dyn_async! {
         // Get all available portal clients
         let clients = test.sim.client_types().await;
 
+        let private_key_1 = "0xfc34e57cc83ed45aae140152fd84e2c21d1f4d46e19452e13acc7ee90daa5bac".to_string();
+        let private_key_2 = "0xe5add57dc4c9ef382509e61ce106ec86f60eb73bbfe326b00f54bf8e1819ba11".to_string();
+
         // Iterate over all possible pairings of clients and run the tests (including self-pairings)
         for ((client_a, client_b), client_c) in clients.iter().cartesian_product(clients.iter()).cartesian_product(clients.iter()) {
 
             // Test block header with proof
             test.run(
                 NClientTestSpec {
-                    name: format!("FIND_CONTENT content stored 2 nodes away {} --> {} --> {}", client_a.name, client_b.name, client_c.name),
+                    name: format!("FIND_CONTENT recipient is closer to content empty enr list {} --> {} --> {}", client_a.name, client_b.name, client_c.name),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_find_content_two_jumps,
+                    run: test_find_content_recipient_is_closer_to_content,
+                    private_keys: Some(&vec![None, Some(&private_key_2), Some(&private_key_1)]),
+                    clients: &vec![&(*client_a).clone(), &(*client_b).clone(), &(*client_c).clone()],
+                }
+            ).await;
+
+            test.run(
+                NClientTestSpec {
+                    name: format!("FIND_CONTENT recipient knows node closer to content {} --> {} --> {}", client_a.name, client_b.name, client_c.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_find_content_recipient_knows_node_closer_to_content,
+                    private_keys: Some(&vec![None, Some(&private_key_1), Some(&private_key_2)]),
                     clients: &vec![&(*client_a).clone(), &(*client_b).clone(), &(*client_c).clone()],
                 }
             ).await;
@@ -74,8 +87,64 @@ dyn_async! {
 }
 
 dyn_async! {
-    // test that a node will return content via FIND_CONTENT that is stored 2 nodes away
-    async fn test_find_content_two_jumps<'a> (clients: Vec<Client>) {
+    async fn test_find_content_recipient_is_closer_to_content<'a> (clients: Vec<Client>) {
+        let (client_a, client_b, client_c) = match clients.iter().collect_tuple() {
+            Some((client_a, client_b, client_c)) => (client_a, client_b, client_c),
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
+
+        let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
+
+        // get enr for b and c to seed for the jumps
+        let client_b_enr = match client_b.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                panic!("Error getting node info: {err:?}");
+            }
+        };
+
+        let client_c_enr = match client_c.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                panic!("Error getting node info: {err:?}");
+            }
+        };
+
+        // seed client_c_enr into routing table of client_b
+        match HistoryNetworkApiClient::add_enr(&client_b.rpc, client_c_enr.clone()).await {
+            Ok(response) => match response {
+                true => (),
+                false => panic!("AddEnr expected to get true and instead got false")
+            },
+            Err(err) => panic!("{}", &err.to_string()),
+        }
+
+        let enrs = match client_a.rpc.find_content(client_b_enr.clone(), header_with_proof_key.clone()).await {
+            Ok(result) => {
+                match result {
+                    ContentInfo::Enrs{ enrs } => {
+                        enrs
+                    },
+                    other => {
+                        panic!("Error: (Enrs) Unexpected FINDCONTENT response not: {other:?}");
+                    }
+                }
+            },
+            Err(err) => {
+                panic!("Error: (Enrs) Unable to get response from FINDCONTENT request: {err:?}");
+            }
+        };
+
+        if !enrs.is_empty() {
+            panic!("If xor content node b is less then xor content node c, enrs should be 0 instead god: length {}", enrs.len());
+        }
+    }
+}
+
+dyn_async! {
+    async fn test_find_content_recipient_knows_node_closer_to_content<'a> (clients: Vec<Client>) {
         let (client_a, client_b, client_c) = match clients.iter().collect_tuple() {
             Some((client_a, client_b, client_c)) => (client_a, client_b, client_c),
             None => {
@@ -136,34 +205,25 @@ dyn_async! {
             }
         };
 
-        // A list of ENR records of nodes that are closer than the recipient is to the requested content
-        // If xor content node b is less then xor content node c then we should get an empty list of enrs
-        // else we should get 1 enr and be able to find our seeded content
-        if XorMetric::distance(&header_with_proof_key.content_id(), &client_b_enr.node_id().raw()) < XorMetric::distance(&header_with_proof_key.content_id(), &client_c_enr.node_id().raw()) {
-            if !enrs.is_empty() {
-                panic!("If xor content node b is less then xor content node c, enrs should be 0 instead god: length {}", enrs.len());
-            }
-        } else {
-            if enrs.len() != 1 {
-                panic!("Known node is closer to content, Enrs returned should be 0 instead got: length {}", enrs.len());
-            }
+        if enrs.len() != 1 {
+            panic!("Known node is closer to content, Enrs returned should be 0 instead got: length {}", enrs.len());
+        }
 
-            match client_a.rpc.find_content(enrs[0].clone(), header_with_proof_key.clone()).await {
-                Ok(result) => {
-                    match result {
-                        ContentInfo::Content{ content: val } => {
-                            if val != header_with_proof_value {
-                                panic!("Error: Unexpected FINDCONTENT response: didn't return expected header with proof value");
-                            }
-                        },
-                        other => {
-                            panic!("Error: Unexpected FINDCONTENT response: {other:?}");
+        match client_a.rpc.find_content(enrs[0].clone(), header_with_proof_key.clone()).await {
+            Ok(result) => {
+                match result {
+                    ContentInfo::Content{ content: val } => {
+                        if val != header_with_proof_value {
+                            panic!("Error: Unexpected FINDCONTENT response: didn't return expected header with proof value");
                         }
+                    },
+                    other => {
+                        panic!("Error: Unexpected FINDCONTENT response: {other:?}");
                     }
-                },
-                Err(err) => {
-                    panic!("Error: Unable to get response from FINDCONTENT request: {err:?}");
                 }
+            },
+            Err(err) => {
+                panic!("Error: Unable to get response from FINDCONTENT request: {err:?}");
             }
         }
     }
