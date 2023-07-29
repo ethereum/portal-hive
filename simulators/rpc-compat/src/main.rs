@@ -135,6 +135,14 @@ dyn_async! {
             run: test_history_lookup_enr_enr_present,
         })
         .await;
+
+        test.run(ClientTestSpec {
+            name: "portal_historyLookupEnr Local Enr".to_string(),
+            description: "".to_string(),
+            always_run: false,
+            run: test_history_lookup_enr_local_enr,
+        })
+        .await;
     }
 }
 
@@ -390,6 +398,28 @@ dyn_async! {
         match HistoryNetworkApiClient::lookup_enr(&client.rpc, enr.node_id()).await {
             Ok(response) => {
                 if response != enr {
+                    panic!("Response from LookupEnr didn't return expected Enr")
+                }
+            },
+            Err(err) => panic!("{}", &err.to_string()),
+        }
+    }
+}
+
+dyn_async! {
+    async fn test_history_lookup_enr_local_enr<'a>(client: Client) {
+        // get our local enr from NodeInfo
+        let target_enr = match client.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                panic!("Error getting node info: {err:?}");
+            }
+        };
+
+        // check if we can fetch data from routing table
+        match HistoryNetworkApiClient::lookup_enr(&client.rpc, target_enr.node_id()).await {
+            Ok(response) => {
+                if response != target_enr {
                     panic!("Response from LookupEnr didn't return expected Enr")
                 }
             },
