@@ -105,6 +105,14 @@ dyn_async! {
         .await;
 
         test.run(ClientTestSpec {
+            name: "portal_historyGetEnr Local Enr".to_string(),
+            description: "".to_string(),
+            always_run: false,
+            run: test_history_get_enr_local_enr,
+        })
+        .await;
+
+        test.run(ClientTestSpec {
             name: "portal_historyDeleteEnr None Found".to_string(),
             description: "".to_string(),
             always_run: false,
@@ -282,6 +290,28 @@ dyn_async! {
 
         if (HistoryNetworkApiClient::get_enr(&client.rpc, enr.node_id()).await).is_ok() {
             panic!("GetEnr in this case is not supposed to return a value")
+        }
+    }
+}
+
+dyn_async! {
+    async fn test_history_get_enr_local_enr<'a>(client: Client) {
+        // get our local enr from NodeInfo
+        let target_enr = match client.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                panic!("Error getting node info: {err:?}");
+            }
+        };
+
+        // check if we can fetch data from routing table
+        match HistoryNetworkApiClient::get_enr(&client.rpc, target_enr.node_id()).await {
+            Ok(response) => {
+                if response != target_enr {
+                    panic!("Response from GetEnr didn't return expected Enr")
+                }
+            },
+            Err(err) => panic!("{}", &err.to_string()),
         }
     }
 }
