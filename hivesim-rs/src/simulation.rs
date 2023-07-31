@@ -18,6 +18,23 @@ impl Default for Simulation {
     }
 }
 
+// A struct in the structure of the JSON config shown in simulators.md
+// it is used to pass information to the Hive Simulators
+#[derive(serde::Serialize, serde::Deserialize)]
+struct SimulatorConfig {
+    client: String,
+    environment: HashMap<String, String>,
+}
+
+impl SimulatorConfig {
+    pub fn new() -> Self {
+        Self {
+            client: "".to_string(),
+            environment: Default::default(),
+        }
+    }
+}
+
 impl Simulation {
     /// New looks up the hive host URI using the HIVE_SIMULATOR environment variable
     /// and connects to it. It will panic if HIVE_SIMULATOR is not set.
@@ -104,12 +121,18 @@ impl Simulation {
         test_suite: SuiteID,
         test: TestID,
         client_type: String,
+        private_key: Option<&String>,
     ) -> (String, IpAddr) {
         let url = format!("{}/testsuite/{}/test/{}/node", self.url, test_suite, test);
         let client = reqwest::Client::new();
 
-        let mut config = HashMap::new();
-        config.insert("client", client_type);
+        let mut config = SimulatorConfig::new();
+        config.client = client_type;
+        if let Some(private_key) = private_key {
+            config
+                .environment
+                .insert("CLIENT_PRIVATE_KEY".to_string(), private_key.to_string());
+        }
 
         let config = serde_json::to_string(&config).unwrap();
         let form = reqwest::multipart::Form::new().text("config", config);
