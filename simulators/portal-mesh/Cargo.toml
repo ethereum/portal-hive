@@ -1,0 +1,14 @@
+[package]
+name = "portal-mesh"
+version = "0.1.0"
+authors = ["https://github.com/ethereum/portal-hive/graphs/contributors"]
+edition = "2021"
+
+[dependencies]
+ethportal-api = { git = "https://github.com/ethereum/trin" }
+hivesim = { path = "../../hivesim-rs" }
+itertools = "0.10.5"
+serde_json = "1.0.87"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1.37"
+tracing-subscriber = "0.3.16"
