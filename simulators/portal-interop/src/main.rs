@@ -504,19 +504,19 @@ dyn_async! {
 
         match client_b.rpc.store(receipts_key.clone(), receipts_value.clone()).await {
             Ok(result) => if !result {
-                panic!("Error storing header with proof for Receipts verification");
+                panic!("Error storing receipts for recursive find content receipts over utp");
             },
             Err(err) => {
-                panic!("Error storing header with proof for Receipts verification: {err:?}");
+                panic!("Error storing receipts: {err:?}");
             }
         }
 
         match client_b.rpc.store(header_with_proof_key.clone(), header_with_proof_value.clone()).await {
             Ok(result) => if !result {
-                panic!("Unable to store header with proof for find content immediate return test");
+                panic!("Unable to store header with proof for recursive find content");
             },
             Err(err) => {
-                panic!("Error storing header with proof for find content immediate return test: {err:?}");
+                panic!("Error storing header with proof for recursive find content: {err:?}");
             }
         }
 
