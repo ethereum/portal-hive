@@ -129,9 +129,10 @@ impl Simulation {
         let mut config = SimulatorConfig::new();
         config.client = client_type;
         if let Some(private_key) = private_key {
-            config
-                .environment
-                .insert("CLIENT_PRIVATE_KEY".to_string(), private_key.to_string());
+            config.environment.insert(
+                "HIVE_CLIENT_PRIVATE_KEY".to_string(),
+                private_key.to_string(),
+            );
         }
 
         let config = serde_json::to_string(&config).unwrap();
