@@ -569,9 +569,9 @@ dependencies = [
 
 [[package]]
 name = "discv5"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77f32d27968ba86689e3f0eccba0383414348a6fc5918b0a639c98dd81e20ed6"
+checksum = "98c05fa26996c6141f78ac4fafbe297a7fa69690565ba4e0d1f2e60bde5ce501"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -678,11 +678,11 @@ dependencies = [
 
 [[package]]
 name = "enr"
-version = "0.8.1"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf56acd72bb22d2824e66ae8e9e5ada4d0de17a69c7fd35569dde2ada8ec9116"
+checksum = "0be7b2ac146c1f99fe245c02d16af0696450d8e06c135db75e10eeb9e642c20d"
 dependencies = [
- "base64 0.13.1",
+ "base64 0.21.0",
  "bytes",
  "ed25519-dalek",
  "hex",
@@ -691,6 +691,7 @@ dependencies = [
  "rand 0.8.5",
  "rlp 0.5.2",
  "serde",
+ "serde-hex",
  "sha3 0.10.7",
  "zeroize",
 ]
@@ -870,7 +871,7 @@ checksum = "0198b9d0078e0f30dedc7acbb21c974e838fc8fae3ee170128658a98cb2c1c04"
 [[package]]
 name = "ethportal-api"
 version = "0.2.1"
-source = "git+https://github.com/ethereum/trin#e3a6daba4cf1513510e1fa7d56d6b4452430071e"
+source = "git+https://github.com/ethereum/trin#b6f3bd06bffce0eeccee3c2bc4bcc4dd06d97521"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -899,6 +900,7 @@ dependencies = [
  "sha3 0.9.1",
  "snap",
  "stremio-serde-hex",
+ "superstruct",
  "thiserror",
  "tokio",
  "tree_hash",
@@ -2760,6 +2762,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-hex"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca37e3e4d1b39afd7ff11ee4e947efae85adfddf4841787bfa47c470e96dc26d"
+dependencies = [
+ "array-init",
+ "serde",
+ "smallvec 0.6.14",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.160"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2993,6 +3006,20 @@ name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
+
+[[package]]
+name = "superstruct"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f4e1f478a7728f8855d7e620e9a152cf8932c6614f86564c886f9b8141f3201"
+dependencies = [
+ "darling",
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "smallvec 1.10.0",
+ "syn 1.0.109",
+]
 
 [[package]]
 name = "syn"
