@@ -234,10 +234,6 @@ dyn_async! {
 
         let result = client_a.rpc.find_content(target_enr, header_with_proof_key.clone()).await;
 
-        if let Ok(ContentInfo::Content{ content: _ }) = result {
-            panic!("Error: Unexpected FINDCONTENT response: wasn't supposed to return back content");
-        }
-
         match result {
             Ok(result) => {
                 match result {
@@ -245,6 +241,9 @@ dyn_async! {
                         if !val.is_empty() {
                             panic!("Error: Unexpected FINDCONTENT response: expected ContentInfo::Enrs length 0 got {}", val.len());
                         }
+                    },
+                    ContentInfo::Content{ content: _ } => {
+                        panic!("Error: Unexpected FINDCONTENT response: wasn't supposed to return back content");
                     },
                     other => {
                         panic!("Error: Unexpected FINDCONTENT response: {other:?}");
