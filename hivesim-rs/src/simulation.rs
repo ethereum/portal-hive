@@ -66,21 +66,23 @@ impl Simulation {
         let url = format!("{}/testsuite", self.url);
         let client = reqwest::Client::new();
         let body = TestRequest { name, description };
-        client
-            .post(url)
-            .json(&body)
-            .send()
-            .await
-            .unwrap()
-            .json::<SuiteID>()
-            .await
-            .unwrap()
+
+        match client.post(url).json(&body).send().await {
+            Ok(response) => match response.json::<SuiteID>().await {
+                Ok(json) => json,
+                Err(err) => panic!("Failed to convert response to json: {}", err),
+            },
+            Err(err) => panic!("Failed to send start suite request: {}", err),
+        }
     }
 
     pub async fn end_suite(&self, test_suite: SuiteID) {
         let url = format!("{}/testsuite/{}", self.url, test_suite);
         let client = reqwest::Client::new();
-        client.delete(url).send().await.unwrap();
+        match client.delete(url).send().await {
+            Ok(_) => (),
+            Err(err) => panic!("Failed to send a end suite request: {}", err),
+        }
     }
 
     /// Starts a new test case, returning the testcase id as a context identifier
@@ -94,15 +96,13 @@ impl Simulation {
         let client = reqwest::Client::new();
         let body = TestRequest { name, description };
 
-        client
-            .post(url)
-            .json(&body)
-            .send()
-            .await
-            .unwrap()
-            .json::<TestID>()
-            .await
-            .unwrap()
+        match client.post(url).json(&body).send().await {
+            Ok(response) => match response.json::<TestID>().await {
+                Ok(test_id) => test_id,
+                Err(err) => panic!("Failed to convert response to json: {}", err),
+            },
+            Err(err) => panic!("Failed to send start test request: {}", err),
+        }
     }
 
     /// Finishes the test case, cleaning up everything, logging results, and returning
@@ -111,7 +111,10 @@ impl Simulation {
         let url = format!("{}/testsuite/{}/test/{}", self.url, test_suite, test);
         let client = reqwest::Client::new();
 
-        client.post(url).json(&test_result).send().await.unwrap();
+        match client.post(url).json(&test_result).send().await {
+            Ok(_) => (),
+            Err(err) => panic!("Failed to send end test request: {}", err),
+        }
     }
 
     /// Starts a new node (or other container).
@@ -135,20 +138,24 @@ impl Simulation {
             );
         }
 
-        let config = serde_json::to_string(&config).unwrap();
+        let config = match serde_json::to_string(&config) {
+            Ok(response) => response,
+            Err(err) => panic!("Failed to parse config to serde_json: {}", err),
+        };
         let form = reqwest::multipart::Form::new().text("config", config);
 
-        let resp = client
-            .post(url)
-            .multipart(form)
-            .send()
-            .await
-            .unwrap()
-            .json::<StartNodeResponse>()
-            .await
-            .unwrap();
+        let resp = match client.post(url).multipart(form).send().await {
+            Ok(response) => match response.json::<StartNodeResponse>().await {
+                Ok(json) => json,
+                Err(err) => panic!("Failed to convert response to json: {}", err),
+            },
+            Err(err) => panic!("Failed to send start client request: {}", err),
+        };
 
-        let ip = IpAddr::from_str(&resp.ip).unwrap();
+        let ip = match IpAddr::from_str(&resp.ip) {
+            Ok(ip) => ip,
+            Err(err) => panic!("Failed to send start suite request: {}", err),
+        };
 
         (resp.id, ip)
     }
@@ -158,13 +165,12 @@ impl Simulation {
     pub async fn client_types(&self) -> Vec<ClientDefinition> {
         let url = format!("{}/clients", self.url);
         let client = reqwest::Client::new();
-        client
-            .get(&url)
-            .send()
-            .await
-            .unwrap()
-            .json::<Vec<ClientDefinition>>()
-            .await
-            .unwrap()
+        match client.get(&url).send().await {
+            Ok(response) => match response.json::<Vec<ClientDefinition>>().await {
+                Ok(client_types) => client_types,
+                Err(err) => panic!("Failed to convert response to json: {}", err),
+            },
+            Err(err) => panic!("Failed to send get client types request: {}", err),
+        }
     }
 }
