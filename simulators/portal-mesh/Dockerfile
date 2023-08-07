@@ -5,6 +5,7 @@ RUN USER=root cargo new --bin portal-mesh
 WORKDIR /portal-mesh
 
 # copy over manifests and source to build image
+COPY ./simulators/portal-mesh/Cargo.lock ./Cargo.lock
 COPY ./simulators/portal-mesh/Cargo.toml ./Cargo.toml
 COPY ./simulators/portal-mesh/src ./src
 COPY ./hivesim-rs ./../../hivesim-rs
