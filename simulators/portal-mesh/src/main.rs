@@ -211,9 +211,13 @@ dyn_async! {
         match client_a.rpc.find_content(enrs[0].clone(), header_with_proof_key.clone()).await {
             Ok(result) => {
                 match result {
-                    ContentInfo::Content{ content: val } => {
+                    ContentInfo::Content{ content: ethportal_api::PossibleHistoryContentValue::ContentPresent(val), utp_transfer } => {
                         if val != header_with_proof_value {
                             panic!("Error: Unexpected FINDCONTENT response: didn't return expected header with proof value");
+                        }
+
+                        if utp_transfer {
+                            panic!("Error: Unexpected FINDCONTENT response: utp_transfer was supposed to be false");
                         }
                     },
                     other => {
