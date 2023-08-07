@@ -66,8 +66,8 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_recipient_is_closer_to_content,
-                    private_keys: Some(&vec![None, Some(&private_key_2), Some(&private_key_1)]),
-                    clients: &vec![&(*client_a).clone(), &(*client_b).clone(), &(*client_c).clone()],
+                    private_keys: Some(vec![None, Some(private_key_2.clone()), Some(private_key_1.clone())]),
+                    clients: vec![client_a.clone(), client_b.clone(), client_c.clone()],
                 }
             ).await;
 
@@ -77,8 +77,8 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_recipient_knows_node_closer_to_content,
-                    private_keys: Some(&vec![None, Some(&private_key_1), Some(&private_key_2)]),
-                    clients: &vec![&(*client_a).clone(), &(*client_b).clone(), &(*client_c).clone()],
+                    private_keys: Some(vec![None, Some(private_key_1.clone()), Some(private_key_2.clone())]),
+                    clients: vec![client_a.clone(), client_b.clone(), client_c.clone()],
                 }
             ).await;
         }
