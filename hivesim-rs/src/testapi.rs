@@ -120,10 +120,9 @@ impl Test {
 
         let rpc_url = format!("http://{}:8545", ip);
 
-        let rpc_client = match HttpClientBuilder::default().build(rpc_url) {
-            Ok(http_client) => http_client,
-            Err(err) => panic!("Failed to build rpc_client: {}", err),
-        };
+        let rpc_client = HttpClientBuilder::default()
+            .build(rpc_url)
+            .expect("Failed to build rpc_client");
 
         Client {
             kind: client_type,
