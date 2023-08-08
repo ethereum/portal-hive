@@ -75,7 +75,7 @@ impl Simulation {
             .expect("Failed to send start suite request")
             .json::<SuiteID>()
             .await
-            .expect("Failed to convert response to json")
+            .expect("Failed to convert start suite response to json")
     }
 
     pub async fn end_suite(&self, test_suite: SuiteID) {
@@ -107,7 +107,7 @@ impl Simulation {
             .expect("Failed to send start test request")
             .json::<TestID>()
             .await
-            .expect("Failed to convert response to json")
+            .expect("Failed to convert start test response to json")
     }
 
     /// Finishes the test case, cleaning up everything, logging results, and returning
@@ -156,9 +156,9 @@ impl Simulation {
             .expect("Failed to send start client request")
             .json::<StartNodeResponse>()
             .await
-            .expect("Failed to convert response to json");
+            .expect("Failed to convert start node response to json");
 
-        let ip = IpAddr::from_str(&resp.ip).expect("Failed to send start suite request");
+        let ip = IpAddr::from_str(&resp.ip).expect("Failed to decode IpAddr from string");
 
         (resp.id, ip)
     }
@@ -175,6 +175,6 @@ impl Simulation {
             .expect("Failed to send get client types request")
             .json::<Vec<ClientDefinition>>()
             .await
-            .expect("Failed to convert response to json")
+            .expect("Failed to convert client types response to json")
     }
 }
