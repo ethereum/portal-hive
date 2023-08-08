@@ -85,7 +85,7 @@ impl Simulation {
             .delete(url)
             .send()
             .await
-            .expect("Failed to send a end suite request");
+            .expect("Failed to send an end suite request");
     }
 
     /// Starts a new test case, returning the testcase id as a context identifier
