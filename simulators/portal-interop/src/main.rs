@@ -174,8 +174,8 @@ dyn_async! {
 
             // Test find nodes distance of client a
             test.run(TwoClientTestSpec {
-                    name: format!("FIND_NODES distance of client a {} --> {}", client_a.name, client_b.name),
-                    description: "find nodes: distance of client a expect seeded enr returned".to_string(),
+                    name: format!("FIND_NODES distance of client A {} --> {}", client_a.name, client_b.name),
+                    description: "find nodes: distance of client A expect seeded enr returned".to_string(),
                     always_run: false,
                     run: test_find_nodes_distance_of_client_a,
                     client_a: &(*client_a).clone(),
@@ -643,6 +643,8 @@ dyn_async! {
     }
 }
 
+// Certain implementations only return nodes which are seen from find_nodes hence instead of
+// generating random enrs we will use client A which client B has "seen"
 dyn_async! {
     async fn test_find_nodes_distance_of_client_a<'a>(client_a: Client, client_b: Client) {
         let target_enr = match client_b.rpc.node_info().await {
@@ -652,7 +654,7 @@ dyn_async! {
             }
         };
 
-        // We are adding client a to our list so we then can assume only one client per bucket
+        // We are adding client A to our list so we then can assume only one client per bucket
         let client_a_enr = match client_a.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
