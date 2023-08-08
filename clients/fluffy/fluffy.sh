@@ -9,5 +9,5 @@ IP_ADDR=$(hostname -i | awk '{print $1}')
 if [ -z ${HIVE_CLIENT_PRIVATE_KEY+x} ]; then
   fluffy --rpc --rpc-address="0.0.0.0" --nat:extip:"$IP_ADDR" --network=none --log-level="debug"
 else
-  fluffy --rpc --rpc-address="0.0.0.0" --nat:extip:"$IP_ADDR" --network=none --log-level="debug" --netkey-unsafe=${HIVE_CLIENT_PRIVATE_KEY}
+  fluffy --rpc --rpc-address="0.0.0.0" --nat:extip:"$IP_ADDR" --network=none --log-level="debug" --netkey-unsafe=0x${HIVE_CLIENT_PRIVATE_KEY}
 fi

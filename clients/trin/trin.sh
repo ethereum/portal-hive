@@ -9,5 +9,5 @@ IP_ADDR=$(hostname -i | awk '{print $1}')
 if [ -z ${HIVE_CLIENT_PRIVATE_KEY+x} ]; then
   RUST_LOG=debug TRIN_INFURA_PROJECT_ID="your-key-here" trin --web3-transport http --web3-http-address http://0.0.0.0:8545 --external-address "$IP_ADDR":9000 --bootnodes none
 else
-  RUST_LOG=debug TRIN_INFURA_PROJECT_ID="your-key-here" trin --web3-transport http --web3-http-address http://0.0.0.0:8545 --external-address "$IP_ADDR":9000 --bootnodes none --unsafe-private-key ${HIVE_CLIENT_PRIVATE_KEY}
+  RUST_LOG=debug TRIN_INFURA_PROJECT_ID="your-key-here" trin --web3-transport http --web3-http-address http://0.0.0.0:8545 --external-address "$IP_ADDR":9000 --bootnodes none --unsafe-private-key 0x${HIVE_CLIENT_PRIVATE_KEY}
 fi
