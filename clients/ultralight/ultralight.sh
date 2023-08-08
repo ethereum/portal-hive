@@ -9,5 +9,5 @@ IP_ADDR=$(hostname -i | awk '{print $1}')
 if [ -z ${HIVE_CLIENT_PRIVATE_KEY+x} ]; then
   node /ultralight/packages/cli/dist/index.js --bindAddress="$IP_ADDR:9000" --dataDir="./data" --rpcPort=8545
 else
-  node /ultralight/packages/cli/dist/index.js --bindAddress="$IP_ADDR:9000" --dataDir="./data" --rpcPort=8545 --pk=${HIVE_CLIENT_PRIVATE_KEY}
+  node /ultralight/packages/cli/dist/index.js --bindAddress="$IP_ADDR:9000" --dataDir="./data" --rpcPort=8545 --pk=0x1a2408021220${HIVE_CLIENT_PRIVATE_KEY}
 fi

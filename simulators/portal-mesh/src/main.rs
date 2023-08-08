@@ -53,8 +53,8 @@ dyn_async! {
         // Get all available portal clients
         let clients = test.sim.client_types().await;
 
-        let private_key_1 = "0xfc34e57cc83ed45aae140152fd84e2c21d1f4d46e19452e13acc7ee90daa5bac".to_string();
-        let private_key_2 = "0xe5add57dc4c9ef382509e61ce106ec86f60eb73bbfe326b00f54bf8e1819ba11".to_string();
+        let private_key_1 = "fc34e57cc83ed45aae140152fd84e2c21d1f4d46e19452e13acc7ee90daa5bac".to_string();
+        let private_key_2 = "e5add57dc4c9ef382509e61ce106ec86f60eb73bbfe326b00f54bf8e1819ba11".to_string();
 
         // Iterate over all possible pairings of clients and run the tests (including self-pairings)
         for ((client_a, client_b), client_c) in clients.iter().cartesian_product(clients.iter()).cartesian_product(clients.iter()) {
