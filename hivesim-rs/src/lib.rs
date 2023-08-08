@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![warn(clippy::unwrap_used)]
 mod macros;
 mod simulation;
 mod testapi;
