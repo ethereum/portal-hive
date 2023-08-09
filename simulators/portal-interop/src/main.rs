@@ -75,8 +75,8 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_offer_header,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
                 }
             ).await;
 
@@ -87,8 +87,8 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_offer_header_shapella,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
                 }
             ).await;
 
@@ -99,8 +99,8 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_offer_body,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
                 }
             ).await;
 
@@ -111,8 +111,8 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_offer_receipts,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
                 }
             ).await;
 
@@ -122,8 +122,8 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_ping,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
                 }
             ).await;
 
@@ -133,8 +133,8 @@ dyn_async! {
                     description: "find content: peer immediately returns locally available content".to_string(),
                     always_run: false,
                     run: test_find_content_immediate_return,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
                 }
             ).await;
 
@@ -144,8 +144,8 @@ dyn_async! {
                     description: "find content: calls find content that doesn't exist".to_string(),
                     always_run: false,
                     run: test_find_content_non_present,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
                 }
             ).await;
 
@@ -155,8 +155,8 @@ dyn_async! {
                     description: "find nodes: distance zero expect called nodes enr".to_string(),
                     always_run: false,
                     run: test_find_nodes_zero_distance,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
                 }
             ).await;
 
@@ -167,8 +167,8 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_recursive_find_content_receipts_over_utp,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
                 }
             ).await;
 
@@ -190,8 +190,8 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_receipts_over_utp,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
                 }
             ).await;
         }

@@ -107,7 +107,7 @@ pub struct Test {
 }
 
 impl Test {
-    pub async fn start_client(&self, client_type: String, private_key: Option<&String>) -> Client {
+    pub async fn start_client(&self, client_type: String, private_key: Option<String>) -> Client {
         let (container, ip) = self
             .sim
             .start_client(
@@ -195,21 +195,21 @@ async fn run_client_test(
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
     let suite_id = test.suite_id;
 
-    let mut test = &mut Test {
-        sim: host.clone(),
-        test_id,
-        suite: test.suite,
-        suite_id,
-        result: Default::default(),
-    };
-
-    test.result.pass = true;
-
-    let client = test.start_client(client_name, None).await;
-
     // run test function
+    let cloned_host = host.clone();
     let test_result = extract_test_results(
         tokio::spawn(async move {
+            let mut test = &mut Test {
+                sim: cloned_host,
+                test_id,
+                suite: test.suite,
+                suite_id,
+                result: Default::default(),
+            };
+
+            test.result.pass = true;
+
+            let client = test.start_client(client_name, None).await;
             (func)(client).await;
         })
         .await,
@@ -275,7 +275,7 @@ pub async fn run_test(
 }
 
 #[derive(Clone)]
-pub struct TwoClientTestSpec<'a> {
+pub struct TwoClientTestSpec {
     // These fields are displayed in the UI. Be sure to add
     // a meaningful description here.
     pub name: String,
@@ -286,12 +286,12 @@ pub struct TwoClientTestSpec<'a> {
     pub always_run: bool,
     // The Run function is invoked when the test executes.
     pub run: AsyncTwoClientsTestFunc,
-    pub client_a: &'a ClientDefinition,
-    pub client_b: &'a ClientDefinition,
+    pub client_a: ClientDefinition,
+    pub client_b: ClientDefinition,
 }
 
 #[async_trait]
-impl Testable for TwoClientTestSpec<'_> {
+impl Testable for TwoClientTestSpec {
     async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite) {
         let test_run = TestRun {
             suite_id,
@@ -301,7 +301,14 @@ impl Testable for TwoClientTestSpec<'_> {
             always_run: self.always_run,
         };
 
-        run_two_client_test(simulation, test_run, self.client_a, self.client_b, self.run).await;
+        run_two_client_test(
+            simulation,
+            test_run,
+            self.client_a.to_owned(),
+            self.client_b.to_owned(),
+            self.run,
+        )
+        .await;
     }
 }
 
@@ -309,30 +316,30 @@ impl Testable for TwoClientTestSpec<'_> {
 async fn run_two_client_test(
     host: Simulation,
     test: TestRun,
-    client_a: &ClientDefinition,
-    client_b: &ClientDefinition,
+    client_a: ClientDefinition,
+    client_b: ClientDefinition,
     func: AsyncTwoClientsTestFunc,
 ) {
     // Register test on simulation server and initialize the T.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
     let suite_id = test.suite_id;
 
-    let mut test = &mut Test {
-        sim: host.clone(),
-        test_id,
-        suite: test.suite,
-        suite_id,
-        result: Default::default(),
-    };
-
-    test.result.pass = true;
-
-    let client_a = test.start_client(client_a.name.clone(), None).await;
-    let client_b = test.start_client(client_b.name.clone(), None).await;
-
     // run test function
+    let cloned_host = host.clone();
     let test_result = extract_test_results(
         tokio::spawn(async move {
+            let mut test = &mut Test {
+                sim: cloned_host,
+                test_id,
+                suite: test.suite,
+                suite_id,
+                result: Default::default(),
+            };
+
+            test.result.pass = true;
+
+            let client_a = test.start_client(client_a.name, None).await;
+            let client_b = test.start_client(client_b.name, None).await;
             (func)(client_a, client_b).await;
         })
         .await,
@@ -342,7 +349,7 @@ async fn run_two_client_test(
 }
 
 #[derive(Clone)]
-pub struct NClientTestSpec<'a> {
+pub struct NClientTestSpec {
     // These fields are displayed in the UI. Be sure to add
     // a meaningful description here.
     pub name: String,
@@ -356,12 +363,12 @@ pub struct NClientTestSpec<'a> {
     // length of private key array should match clients array
     // this attribute is optional and is used for tests which need node_ids relative to the
     // content within the test
-    pub private_keys: Option<&'a Vec<Option<&'a String>>>,
-    pub clients: &'a Vec<&'a ClientDefinition>,
+    pub private_keys: Option<Vec<Option<String>>>,
+    pub clients: Vec<ClientDefinition>,
 }
 
 #[async_trait]
-impl Testable for NClientTestSpec<'_> {
+impl Testable for NClientTestSpec {
     async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite) {
         let test_run = TestRun {
             suite_id,
@@ -374,8 +381,8 @@ impl Testable for NClientTestSpec<'_> {
         run_n_client_test(
             simulation,
             test_run,
-            self.private_keys,
-            self.clients,
+            self.private_keys.to_owned(),
+            self.clients.to_owned(),
             self.run,
         )
         .await;
@@ -386,37 +393,37 @@ impl Testable for NClientTestSpec<'_> {
 async fn run_n_client_test(
     host: Simulation,
     test: TestRun,
-    private_keys: Option<&Vec<Option<&String>>>,
-    clients: &[&ClientDefinition],
+    private_keys: Option<Vec<Option<String>>>,
+    clients: Vec<ClientDefinition>,
     func: AsyncNClientsTestFunc,
 ) {
     // Register test on simulation server and initialize the T.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
     let suite_id = test.suite_id;
 
-    let mut test = &mut Test {
-        sim: host.clone(),
-        test_id,
-        suite: test.suite,
-        suite_id,
-        result: Default::default(),
-    };
-
-    test.result.pass = true;
-
-    let mut client_vec: Vec<Client> = Vec::new();
-    for (index, client) in clients.iter().enumerate() {
-        let private_key = if let Some(private_keys) = private_keys {
-            private_keys[index]
-        } else {
-            None
-        };
-        client_vec.push(test.start_client(client.name.clone(), private_key).await);
-    }
-
     // run test function
+    let cloned_host = host.clone();
     let test_result = extract_test_results(
         tokio::spawn(async move {
+            let mut test = &mut Test {
+                sim: cloned_host,
+                test_id,
+                suite: test.suite,
+                suite_id,
+                result: Default::default(),
+            };
+
+            test.result.pass = true;
+
+            let mut client_vec: Vec<Client> = Vec::new();
+            for (index, client) in clients.into_iter().enumerate() {
+                let private_key = if let Some(private_keys) = private_keys.clone() {
+                    private_keys[index].to_owned()
+                } else {
+                    None
+                };
+                client_vec.push(test.start_client(client.name.to_owned(), private_key).await);
+            }
             (func)(client_vec).await;
         })
         .await,
