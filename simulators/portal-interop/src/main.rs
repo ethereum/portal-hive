@@ -177,8 +177,8 @@ dyn_async! {
                     description: "find nodes: distance of client A expect seeded enr returned".to_string(),
                     always_run: false,
                     run: test_find_nodes_distance_of_client_a,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
                 }
             ).await;
 
