@@ -67,7 +67,6 @@ dyn_async! {
 
         // Iterate over all possible pairings of clients and run the tests (including self-pairings)
         for (client_a, client_b) in clients.iter().cartesian_product(clients.iter()) {
-
             // Test block header with proof
             test.run(
                 TwoClientTestSpec {
@@ -560,6 +559,9 @@ dyn_async! {
             },
             Err(err) => panic!("{}", &err.to_string()),
         }
+
+        // send a ping so client A sees it as a seen/connected node
+        let _ = client_a.rpc.ping(target_enr.clone()).await;
 
         match client_a.rpc.recursive_find_content(receipts_key.clone()).await {
             Ok(result) => {
