@@ -62,7 +62,7 @@ dyn_async! {
             // Test block header with proof
             test.run(
                 NClientTestSpec {
-                    name: format!("FIND_CONTENT recipient is closer to content empty enr list {} --> {} --> {}", client_a.name, client_b.name, client_c.name),
+                    name: format!("FIND_CONTENT A gets 0 ENRs, if B is closer to content than C. A:{} --> B:{} --> C:{}", client_a.name, client_b.name, client_c.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_recipient_is_closer_to_content,
@@ -73,7 +73,7 @@ dyn_async! {
 
             test.run(
                 NClientTestSpec {
-                    name: format!("FIND_CONTENT recipient knows node closer to content {} --> {} --> {}", client_a.name, client_b.name, client_c.name),
+                    name: format!("FIND_CONTENT A gets ENR for C, if B is further from content than C. A:{} --> B:{} --> C:{}", client_a.name, client_b.name, client_c.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_recipient_knows_node_closer_to_content,
@@ -137,7 +137,7 @@ dyn_async! {
         };
 
         if !enrs.is_empty() {
-            panic!("If xor content node b is less then xor content node c, enrs should be 0 instead god: length {}", enrs.len());
+            panic!("Because content XOR node B is less then content XOR node C, A should get 0 enrs, but got: length {}", enrs.len());
         }
     }
 }
