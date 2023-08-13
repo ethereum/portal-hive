@@ -171,6 +171,18 @@ dyn_async! {
                 }
             ).await;
 
+            // Test recursive find content Header With Proof
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("RECURSIVE_FIND_CONTENT Header {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_recursive_find_content_header,
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
+                }
+            ).await;
+
             // Test find nodes distance of client a
             test.run(TwoClientTestSpec {
                     name: format!("FIND_NODES distance of client A {} --> {}", client_a.name, client_b.name),
@@ -573,6 +585,65 @@ dyn_async! {
 
                         if !utp_transfer {
                             panic!("Error: Unexpected FINDCONTENT response: utp_transfer was supposed to be true");
+                        }
+                    },
+                    other => {
+                        panic!("Error: Unexpected RECURSIVEFINDCONTENT response: {other:?}");
+                    }
+                }
+            },
+            Err(err) => {
+                panic!("Error: Unable to get response from RECURSIVEFINDCONTENT request: {err:?}");
+            }
+        }
+    }
+}
+
+dyn_async! {
+    // test that a node will return a header via RECURSIVEFINDCONTENT that is stored locally and makes sure utp_transfer is false
+    async fn test_recursive_find_content_header<'a> (client_a: Client, client_b: Client) {
+        let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
+        let header_with_proof_value: HistoryContentValue = serde_json::from_value(json!(HEADER_WITH_PROOF_VALUE)).unwrap();
+
+        match client_b.rpc.store(header_with_proof_key.clone(), header_with_proof_value.clone()).await {
+            Ok(result) => if !result {
+                panic!("Unable to store header with proof for recursive find content");
+            },
+            Err(err) => {
+                panic!("Error storing header with proof for recursive find content: {err:?}");
+            }
+        }
+
+        let target_enr = match client_b.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                panic!("Error getting node info: {err:?}");
+            }
+        };
+
+        match HistoryNetworkApiClient::add_enr(&client_a.rpc, target_enr.clone()).await {
+            Ok(response) => match response {
+                true => (),
+                false => panic!("AddEnr expected to get true and instead got false")
+            },
+            Err(err) => panic!("{}", &err.to_string()),
+        }
+
+        // send a ping so client A sees it as a seen/connected node
+        if let Err(err) = client_a.rpc.ping(target_enr.clone()).await {
+                panic!("Unable to receive pong info: {err:?}");
+        }
+
+        match client_a.rpc.recursive_find_content(header_with_proof_key.clone()).await {
+            Ok(result) => {
+                match result {
+                    ContentInfo::Content{ content: ethportal_api::PossibleHistoryContentValue::ContentPresent(val), utp_transfer } => {
+                        if val != header_with_proof_value {
+                            panic!("Error: Unexpected RECURSIVEFINDCONTENT response: didn't return expected header with proof");
+                        }
+
+                        if utp_transfer {
+                            panic!("Error: Unexpected RECURSIVEFINDCONTENT response: utp_transfer was supposed to be false");
                         }
                     },
                     other => {
