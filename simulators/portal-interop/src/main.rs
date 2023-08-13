@@ -193,6 +193,18 @@ dyn_async! {
                     client_b: client_b.clone(),
                 }
             ).await;
+
+            // Test find content block body over uTP
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("FIND_CONTENT Block Body over uTP {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_find_content_block_body_over_utp,
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
+                }
+            ).await;
         }
    }
 }
@@ -627,6 +639,64 @@ dyn_async! {
                     ContentInfo::Content{ content: ethportal_api::PossibleHistoryContentValue::ContentPresent(val), utp_transfer } => {
                         if val != receipts_value {
                             panic!("Error: Unexpected FINDCONTENT response: didn't return expected receipt");
+                        }
+
+                        if !utp_transfer {
+                            panic!("Error: Unexpected FINDCONTENT response: utp_transfer was supposed to be true");
+                        }
+                    },
+                    other => {
+                        panic!("Error: Unexpected FINDCONTENT response: {other:?}");
+                    }
+                }
+            },
+            Err(err) => {
+                panic!("Error: Unable to get response from FINDCONTENT request: {err:?}");
+            }
+        }
+    }
+}
+
+dyn_async! {
+    // test that a node will return a block body via FINDCONTENT over uTP that it has stored locally
+    async fn test_find_content_block_body_over_utp<'a> (client_a: Client, client_b: Client) {
+        let block_body_key: HistoryContentKey = serde_json::from_value(json!(BLOCK_BODY_KEY)).unwrap();
+        let block_body_value: HistoryContentValue = serde_json::from_value(json!(BLOCK_BODY_VALUE)).unwrap();
+
+        let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
+        let header_with_proof_value: HistoryContentValue = serde_json::from_value(json!(HEADER_WITH_PROOF_VALUE)).unwrap();
+
+        match client_b.rpc.store(block_body_key.clone(), block_body_value.clone()).await {
+            Ok(result) => if !result {
+                panic!("Error storing block body for find content block body over utp");
+            },
+            Err(err) => {
+                panic!("Error storing block body: {err:?}");
+            }
+        }
+
+        match client_b.rpc.store(header_with_proof_key.clone(), header_with_proof_value.clone()).await {
+            Ok(result) => if !result {
+                panic!("Unable to store header with proof for find content");
+            },
+            Err(err) => {
+                panic!("Error storing header with proof for find content: {err:?}");
+            }
+        }
+
+        let target_enr = match client_b.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                panic!("Error getting node info: {err:?}");
+            }
+        };
+
+        match client_a.rpc.find_content(target_enr, block_body_key.clone()).await {
+            Ok(result) => {
+                match result {
+                    ContentInfo::Content{ content: ethportal_api::PossibleHistoryContentValue::ContentPresent(val), utp_transfer } => {
+                        if val != block_body_value {
+                            panic!("Error: Unexpected FINDCONTENT response: didn't return expected block body");
                         }
 
                         if !utp_transfer {
