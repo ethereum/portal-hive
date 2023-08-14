@@ -564,14 +564,6 @@ dyn_async! {
             }
         };
 
-        match HistoryNetworkApiClient::add_enr(&client_a.rpc, target_enr.clone()).await {
-            Ok(response) => match response {
-                true => (),
-                false => panic!("AddEnr expected to get true and instead got false")
-            },
-            Err(err) => panic!("{}", &err.to_string()),
-        }
-
         // send a ping so client A sees it as a seen/connected node
         if let Err(err) = client_a.rpc.ping(target_enr.clone()).await {
                 panic!("Unable to receive pong info: {err:?}");
