@@ -1,7 +1,8 @@
 use ethportal_api::types::enr::generate_random_remote_enr;
+use ethportal_api::types::portal::ContentInfo;
 use ethportal_api::Discv5ApiClient;
-use ethportal_api::HistoryNetworkApiClient;
 use ethportal_api::PossibleHistoryContentValue::{ContentAbsent, ContentPresent};
+use ethportal_api::{HistoryContentKey, HistoryNetworkApiClient};
 use hivesim::{dyn_async, Client, ClientTestSpec, Simulation, Suite, Test, TestSpec};
 use serde_json::json;
 
@@ -149,6 +150,14 @@ dyn_async! {
             description: "".to_string(),
             always_run: false,
             run: test_history_lookup_enr_local_enr,
+        })
+        .await;
+
+        test.run(ClientTestSpec {
+            name: "RECURSIVE_FIND_CONTENT Content Absent".to_string(),
+            description: "".to_string(),
+            always_run: false,
+            run: test_recursive_find_content_content_absent,
         })
         .await;
     }
@@ -454,6 +463,31 @@ dyn_async! {
                 }
             },
             Err(err) => panic!("{}", &err.to_string()),
+        }
+    }
+}
+
+dyn_async! {
+    // test that a node will return a AbsentContent via RECURSIVEFINDCONTENT when the data doesn't exist
+    async fn test_recursive_find_content_content_absent<'a> (client: Client) {
+        let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(CONTENT_KEY)).unwrap();
+
+        match client.rpc.recursive_find_content(header_with_proof_key).await {
+            Ok(result) => {
+                match result {
+                    ContentInfo::Content{ content: ethportal_api::PossibleHistoryContentValue::ContentAbsent, utp_transfer } => {
+                        if utp_transfer {
+                            panic!("Error: Unexpected RECURSIVEFINDCONTENT response: utp_transfer was supposed to be false");
+                        }
+                    },
+                    other => {
+                        panic!("Error: Unexpected RECURSIVEFINDCONTENT response: {other:?}");
+                    }
+                }
+            },
+            Err(err) => {
+                panic!("Error: Unable to get response from RECURSIVEFINDCONTENT request: {err:?}");
+            }
         }
     }
 }
