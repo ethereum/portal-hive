@@ -159,7 +159,19 @@ dyn_async! {
                 }
             ).await;
 
-            // Test find content receipts over uTP
+            // Test recursive find content receipts over uTP
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("RECURSIVE_FIND_CONTENT Block Body over uTP {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_recursive_find_content_block_body_over_utp,
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
+                }
+            ).await;
+
+            // Test recursive find content receipts over uTP
             test.run(
                 TwoClientTestSpec {
                     name: format!("RECURSIVE_FIND_CONTENT Receipts over uTP {} --> {}", client_a.name, client_b.name),
@@ -531,6 +543,69 @@ dyn_async! {
 }
 
 dyn_async! {
+    // test that a node will return a block body via RECURSIVEFINDCONTENT over uTP that it has stored locally
+    async fn test_recursive_find_content_block_body_over_utp<'a> (client_a: Client, client_b: Client) {
+        let block_body_key: HistoryContentKey = serde_json::from_value(json!(BLOCK_BODY_KEY)).unwrap();
+        let block_body_value: HistoryContentValue = serde_json::from_value(json!(BLOCK_BODY_VALUE)).unwrap();
+
+        let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
+        let header_with_proof_value: HistoryContentValue = serde_json::from_value(json!(HEADER_WITH_PROOF_VALUE)).unwrap();
+
+        match client_b.rpc.store(block_body_key.clone(), block_body_value.clone()).await {
+            Ok(result) => if !result {
+                panic!("Error storing block body for recursive find content block body over utp");
+            },
+            Err(err) => {
+                panic!("Error storing block body: {err:?}");
+            }
+        }
+
+        match client_b.rpc.store(header_with_proof_key.clone(), header_with_proof_value.clone()).await {
+            Ok(result) => if !result {
+                panic!("Unable to store header with proof for recursive find content");
+            },
+            Err(err) => {
+                panic!("Error storing header with proof for recursive find content: {err:?}");
+            }
+        }
+
+        let target_enr = match client_b.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                panic!("Error getting node info: {err:?}");
+            }
+        };
+
+        // send a ping so client A sees it as a seen/connected node
+        if let Err(err) = client_a.rpc.ping(target_enr.clone()).await {
+                panic!("Unable to receive pong info: {err:?}");
+        }
+
+        match client_a.rpc.recursive_find_content(block_body_key.clone()).await {
+            Ok(result) => {
+                match result {
+                    ContentInfo::Content{ content: ethportal_api::PossibleHistoryContentValue::ContentPresent(val), utp_transfer } => {
+                        if val != block_body_value {
+                            panic!("Error: Unexpected RECURSIVEFINDCONTENT response: didn't return expected block body");
+                        }
+
+                        if !utp_transfer {
+                            panic!("Error: Unexpected RECURSIVEFINDCONTENT response: utp_transfer was supposed to be true");
+                        }
+                    },
+                    other => {
+                        panic!("Error: Unexpected RECURSIVEFINDCONTENT response: {other:?}");
+                    }
+                }
+            },
+            Err(err) => {
+                panic!("Error: Unable to get response from RECURSIVEFINDCONTENT request: {err:?}");
+            }
+        }
+    }
+}
+
+dyn_async! {
     // test that a node will return a receipts via RECURSIVEFINDCONTENT over uTP that it has stored locally
     async fn test_recursive_find_content_receipts_over_utp<'a> (client_a: Client, client_b: Client) {
         let receipts_key: HistoryContentKey = serde_json::from_value(json!(RECEIPTS_KEY)).unwrap();
@@ -573,7 +648,9 @@ dyn_async! {
         }
 
         // send a ping so client A sees it as a seen/connected node
-        let _ = client_a.rpc.ping(target_enr.clone()).await;
+        if let Err(err) = client_a.rpc.ping(target_enr.clone()).await {
+                panic!("Unable to receive pong info: {err:?}");
+        }
 
         match client_a.rpc.recursive_find_content(receipts_key.clone()).await {
             Ok(result) => {
@@ -584,7 +661,7 @@ dyn_async! {
                         }
 
                         if !utp_transfer {
-                            panic!("Error: Unexpected FINDCONTENT response: utp_transfer was supposed to be true");
+                            panic!("Error: Unexpected RECURSIVEFINDCONTENT response: utp_transfer was supposed to be true");
                         }
                     },
                     other => {
