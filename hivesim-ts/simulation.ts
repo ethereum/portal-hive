@@ -22,7 +22,7 @@ export class Simulation {
         return json
     }
 
-    async endSuite(test_suite: SuiteID) {
+    async end_suite(test_suite: SuiteID) {
         const url = this.url + '/testsuite/' + test_suite
         const response = await fetch(url, {method: 'DELETE'})
         return response
