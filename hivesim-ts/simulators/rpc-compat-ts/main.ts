@@ -28,14 +28,13 @@ const run_suite = async(host: Simulation, suite: Suite) =>{
     await host.end_suite(suite_id)
 }
 
-const test_node_info = async (test: Test, client: IClient) => {
+const client_enr_tag = async (test: Test, client: IClient) => {
     const clients: any = {
-        'trin': 't 0.0.1',
+        'trin': 't 0.1.1-alpha.1-8cbf36',
         'fluffy': 'f 0.0.1',
         'ultralight': 'u 0.0.1'
     }
     
-    console.log('test_node_info', {client})
     const res = await client.rpc.request("discv5_nodeInfo", [])
     const nodeInfo = res.result
     const enr = decodeENR(nodeInfo.enr)
@@ -50,7 +49,6 @@ const test_node_info = async (test: Test, client: IClient) => {
     if (enr.c !== clients[client.kind]) {
         test.fatal(`Expected client type ${clients[client.kind]}, got ${enr.c}`)
     }
-    console.log('test_node_info passed:', enr.c)
 }
 
 const run_all_client_tests = async (test: Test, _client?: IClient) => {
@@ -58,7 +56,7 @@ const run_all_client_tests = async (test: Test, _client?: IClient) => {
         name: "discv5_nodeInfo",
         description: "returns the node_id and ENR",
         always_run: true,
-        run: test_node_info,
+        run: client_enr_tag,
     }))
 // run other tests...
 }
