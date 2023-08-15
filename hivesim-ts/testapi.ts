@@ -1,8 +1,10 @@
-import { Client, HttpClient } from "jayson/promise";
-import { Simulation } from "./simulation";
+import jayson from "jayson/promise";
+import { Simulation } from "./simulation.js";
 import { ClientDefinition, SuiteID, TestID, TestResult } from "./types";
-import { client_test_name } from "./utils";
+import { client_test_name } from "./utils.js";
 
+const { Client } = jayson
+type  HttpClient = jayson.HttpClient
 type AsyncTestFunc = (test: Test, client?: IClient) => Promise<void>;
 type AsyncClientTestFunc = (test: Test, client: IClient) => Promise<void>;
 type AsyncTwoClientsTestFunc = (
@@ -46,38 +48,22 @@ export class Suite implements ISuite {
   add(test: Testable) {
     this.tests.push(test);
   }
-  // async run(host: Simulation, ...suites: Suite[]) {
-  //   for (const s of suites) {
-  //     await this.runSuite(host, s);
-  //   }
-  //   return null;
-  // }
-
   // // RunSuite runs all tests in a suite.
-  // async runSuite(host: Simulation, suite: Suite): Promise<void> {
-  //   if (!host.m.match(suite.name, "")) {
-  //     console.log(
-  //       `skipping suite ${suite.name} because it doesn't match test pattern ${host.m.pattern}`
-  //     );
-  //     return;
-  //   }
+  async run(host: Simulation) {
+    const suiteId = await host.start_suite(this.name, this.description);
+    for await (const test of this.tests) {
+      await test.run_test(host, suiteId, this);
+  }
+  const ended = await host.end_suite(suiteId);
+}
 
-  //   const suiteId = await host.start_suite(suite.name, suite.description);
-  //   await Promise.all(
-  //     suite.tests.map(async (test) => {
-  //       return test(host, suiteId, suite);
-  //     })
-  //   );
-  // }
-
-  // async mustRunSuite(host: Simulation, suite: Suite): Promise<void> {
-  //   try {
-  //     await this.runSuite(host, suite);
-  //   } catch (err: any) {
-  //     console.log(`error running suite ${suite.name}: ${err}`);
-  //     throw err;
-  //   }
-  // }
+  async mustRunSuite(host: Simulation): Promise<void> {
+    try {
+      await this.run(host);
+    } catch (err: any) {
+      throw err;
+    }
+  }
 }
 
 export interface IHttpClient {
@@ -140,7 +126,7 @@ export class Test {
       this.suite_id,
       this.test_id,
       client_type
-    );
+      );
     const rpc_client = Client.http({ port: 8545, host: ip });
     const client: IClient = {
       kind: client_type,
@@ -168,7 +154,6 @@ export class Test {
   }
 
   log_failure(message: string) {
-    console.log(message);
     this.result.details = message;
   }
 
@@ -203,10 +188,11 @@ export class ClientTestSpec implements IClientTestSpec {
     const clients = await sim.client_types();
     for (const client of clients) {
       const client_name = client.name;
+      const name = client_test_name(this.name, client_name);
       const test_run: ITestRun = {
-        suite_id: suite_id,
-        suite: suite,
-        name: client_test_name(this.name, client_name),
+        suite_id,
+        suite,
+        name,
         desc: this.description,
         always_run: this.always_run,
       };
@@ -222,20 +208,19 @@ export class ClientTestSpec implements IClientTestSpec {
     const test_id = await host.start_test(
       test_run.suite_id,
       test_run.name,
-      this.description
+      test_run.desc
     );
     const test: Test = new Test(
       host,
-      test_id,
+      test_run.suite_id,
       test_run.suite,
-      test_run.suite_id
-    );
-    test.result.pass = true;
-
-    const client = await test.start_client(client_name);
+      test_id,
+      );
+      test.result.pass = true;
+      
+      const client = await test.start_client(client_name);
     await run(test, client);
-
-    await host.end_test(test.suite_id, test_id);
+    const end = await host.end_test( test);
   }
 }
 
@@ -251,12 +236,12 @@ export async function run_client_test(
     test_run.name,
     this.description
   );
-  const test: Test = new Test(host, test_id, test_run.suite, test_run.suite_id);
+  const test: Test = new Test(host, test_run.suite_id, test_run.suite, test_id);
   test.result.pass = true;
 
   const client = await test.start_client(client_name);
     await run(test, client);
-  await host.end_test(test.suite_id, test_id);
+  await host.end_test(test);
 }
 
 interface ITestSpec extends Testable {
@@ -305,13 +290,13 @@ export const run_test = async (
   client: IClient | undefined,
   func: AsyncTestFunc
 ) => {
-  const test_id = await host.start_test(test.suite_id, test.name, test.desc);
-  const t: Test = new Test(host, test_id, test.suite, test.suite_id);
+  const test_id = await host.start_test(test.suite_id, test.name, test.desc);  
+  const t: Test = new Test(host, test.suite_id, test.suite, test_id);
   t.result.pass = true;
 
   await func(t, client);
 
-  await host.end_test(test.suite_id, test_id);
+  await host.end_test(t);
 };
 
 export class TwoClientTestSpec implements Testable {
@@ -367,15 +352,15 @@ export class TwoClientTestSpec implements Testable {
     );
     const test: Test = new Test(
       host,
-      test_id,
+      test_run.suite_id,
       test_run.suite,
-      test_run.suite_id
+      test_id,
     );
     test.result.pass = true;
     const _client_a = await test.start_client(this.client_a.name);
     const _client_b = await test.start_client(this.client_b.name);
     await func(test, _client_a, _client_b);
-    await host.end_test(test_run.suite_id, test_id);
+    await host.end_test(test);
   }
 }
 
@@ -392,12 +377,12 @@ export const run_two_client_test = async (
     test_run.name,
     test_run.desc
   );
-  const test: Test = new Test(host, test_id, test_run.suite, test_run.suite_id);
+  const test: Test = new Test(host, test_run.suite_id, test_run.suite, test_id);
   test.result.pass = true;
   const _client_a = await test.start_client(client_a.name);
   const _client_b = await test.start_client(client_b.name);
   await func(test, _client_a, _client_b);
-  await host.end_test(test_run.suite_id, test_id);
+  await host.end_test(test);
 };
 
 export class NClientTestSpec implements Testable {
@@ -442,7 +427,7 @@ export const run_n_client_test = async (
     test_run.name,
     test_run.desc
   );
-  const test: Test = new Test(host, test_id, test_run.suite, test_run.suite_id);
+  const test: Test = new Test(host, test_run.suite_id, test_run.suite, test_id);
   test.result.pass = true;
   const client_vec: IClient[] = await Promise.all(
     clients.map((client) => {
@@ -453,5 +438,5 @@ export const run_n_client_test = async (
     await test.start_client(client.name);
   }
   await func(test, client_vec);
-  await host.end_test(test_run.suite_id, test_id);
+  await host.end_test(test);
 };
