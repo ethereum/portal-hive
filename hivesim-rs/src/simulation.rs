@@ -18,6 +18,23 @@ impl Default for Simulation {
     }
 }
 
+// A struct in the structure of the JSON config shown in simulators.md
+// it is used to pass information to the Hive Simulators
+#[derive(serde::Serialize, serde::Deserialize)]
+struct SimulatorConfig {
+    client: String,
+    environment: HashMap<String, String>,
+}
+
+impl SimulatorConfig {
+    pub fn new() -> Self {
+        Self {
+            client: "".to_string(),
+            environment: Default::default(),
+        }
+    }
+}
+
 impl Simulation {
     /// New looks up the hive host URI using the HIVE_SIMULATOR environment variable
     /// and connects to it. It will panic if HIVE_SIMULATOR is not set.
@@ -49,21 +66,26 @@ impl Simulation {
         let url = format!("{}/testsuite", self.url);
         let client = reqwest::Client::new();
         let body = TestRequest { name, description };
+
         client
             .post(url)
             .json(&body)
             .send()
             .await
-            .unwrap()
+            .expect("Failed to send start suite request")
             .json::<SuiteID>()
             .await
-            .unwrap()
+            .expect("Failed to convert start suite response to json")
     }
 
     pub async fn end_suite(&self, test_suite: SuiteID) {
         let url = format!("{}/testsuite/{}", self.url, test_suite);
         let client = reqwest::Client::new();
-        client.delete(url).send().await.unwrap();
+        client
+            .delete(url)
+            .send()
+            .await
+            .expect("Failed to send an end suite request");
     }
 
     /// Starts a new test case, returning the testcase id as a context identifier
@@ -82,10 +104,10 @@ impl Simulation {
             .json(&body)
             .send()
             .await
-            .unwrap()
+            .expect("Failed to send start test request")
             .json::<TestID>()
             .await
-            .unwrap()
+            .expect("Failed to convert start test response to json")
     }
 
     /// Finishes the test case, cleaning up everything, logging results, and returning
@@ -94,7 +116,12 @@ impl Simulation {
         let url = format!("{}/testsuite/{}/test/{}", self.url, test_suite, test);
         let client = reqwest::Client::new();
 
-        client.post(url).json(&test_result).send().await.unwrap();
+        client
+            .post(url)
+            .json(&test_result)
+            .send()
+            .await
+            .expect("Failed to send end test request");
     }
 
     /// Starts a new node (or other container).
@@ -104,14 +131,20 @@ impl Simulation {
         test_suite: SuiteID,
         test: TestID,
         client_type: String,
+        private_key: Option<String>,
     ) -> (String, IpAddr) {
         let url = format!("{}/testsuite/{}/test/{}/node", self.url, test_suite, test);
         let client = reqwest::Client::new();
 
-        let mut config = HashMap::new();
-        config.insert("client", client_type);
+        let mut config = SimulatorConfig::new();
+        config.client = client_type;
+        if let Some(private_key) = private_key {
+            config
+                .environment
+                .insert("HIVE_CLIENT_PRIVATE_KEY".to_string(), private_key);
+        }
 
-        let config = serde_json::to_string(&config).unwrap();
+        let config = serde_json::to_string(&config).expect("Failed to parse config to serde_json");
         let form = reqwest::multipart::Form::new().text("config", config);
 
         let resp = client
@@ -119,12 +152,12 @@ impl Simulation {
             .multipart(form)
             .send()
             .await
-            .unwrap()
+            .expect("Failed to send start client request")
             .json::<StartNodeResponse>()
             .await
-            .unwrap();
+            .expect("Failed to convert start node response to json");
 
-        let ip = IpAddr::from_str(&resp.ip).unwrap();
+        let ip = IpAddr::from_str(&resp.ip).expect("Failed to decode IpAddr from string");
 
         (resp.id, ip)
     }
@@ -138,9 +171,9 @@ impl Simulation {
             .get(&url)
             .send()
             .await
-            .unwrap()
+            .expect("Failed to send get client types request")
             .json::<Vec<ClientDefinition>>()
             .await
-            .unwrap()
+            .expect("Failed to convert client types response to json")
     }
 }

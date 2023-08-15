@@ -7,18 +7,7 @@ use dyn_clone::DynClone;
 use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
 use std::net::IpAddr;
 
-use crate::utils::client_test_name;
-
-pub type AsyncClientTestFunc = fn(
-    &mut Test,
-    Client,
-) -> Pin<
-    Box<
-        dyn Future<Output = ()> // future API / pollable
-            + Send // required by non-single-threaded executors
-            + '_,
-    >,
->;
+use crate::utils::{client_test_name, extract_test_results};
 
 pub type AsyncTestFunc = fn(
     &mut Test,
@@ -31,26 +20,34 @@ pub type AsyncTestFunc = fn(
     >,
 >;
 
+pub type AsyncClientTestFunc = fn(
+    Client,
+) -> Pin<
+    Box<
+        dyn Future<Output = ()> // future API / pollable
+            + Send // required by non-single-threaded executors
+            + 'static,
+    >,
+>;
+
 pub type AsyncTwoClientsTestFunc = fn(
-    &mut Test,
     Client,
     Client,
 ) -> Pin<
     Box<
         dyn Future<Output = ()> // future API / pollable
             + Send // required by non-single-threaded executors
-            + '_,
+            + 'static,
     >,
 >;
 
 pub type AsyncNClientsTestFunc = fn(
-    &mut Test,
     Vec<Client>,
 ) -> Pin<
     Box<
         dyn Future<Output = ()> // future API / pollable
             + Send // required by non-single-threaded executors
-            + '_,
+            + 'static,
     >,
 >;
 
@@ -110,15 +107,22 @@ pub struct Test {
 }
 
 impl Test {
-    pub async fn start_client(&self, client_type: String) -> Client {
+    pub async fn start_client(&self, client_type: String, private_key: Option<String>) -> Client {
         let (container, ip) = self
             .sim
-            .start_client(self.suite_id, self.test_id, client_type.clone())
+            .start_client(
+                self.suite_id,
+                self.test_id,
+                client_type.clone(),
+                private_key,
+            )
             .await;
 
         let rpc_url = format!("http://{}:8545", ip);
 
-        let rpc_client = HttpClientBuilder::default().build(rpc_url).unwrap();
+        let rpc_client = HttpClientBuilder::default()
+            .build(rpc_url)
+            .expect("Failed to build rpc_client");
 
         Client {
             kind: client_type,
@@ -139,22 +143,6 @@ impl Test {
     pub async fn run(&self, spec: impl Testable) {
         spec.run_test(self.sim.clone(), self.suite_id, self.suite.clone())
             .await
-    }
-
-    pub fn fatal(&mut self, msg: &str) {
-        self.log_failure(msg);
-        self.fail();
-    }
-
-    /// Prints to standard output, which goes to the simulation log file.
-    fn log_failure(&mut self, msg: &str) {
-        println!("{msg}");
-        self.result.details = msg.to_owned()
-    }
-
-    // Fail signals that the test has failed.
-    fn fail(&mut self) {
-        self.result.pass = false
     }
 }
 
@@ -205,24 +193,29 @@ async fn run_client_test(
 ) {
     // Register test on simulation server and initialize the Test.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
-
-    let mut test = &mut Test {
-        sim: host.clone(),
-        test_id,
-        suite: test.suite,
-        suite_id: test.suite_id,
-        result: Default::default(),
-    };
-
-    test.result.pass = true;
+    let suite_id = test.suite_id;
 
     // run test function
-    let client = test.start_client(client_name).await;
+    let cloned_host = host.clone();
+    let test_result = extract_test_results(
+        tokio::spawn(async move {
+            let mut test = &mut Test {
+                sim: cloned_host,
+                test_id,
+                suite: test.suite,
+                suite_id,
+                result: Default::default(),
+            };
 
-    (func)(test, client).await;
+            test.result.pass = true;
 
-    host.end_test(test.suite_id, test_id, test.result.clone())
-        .await;
+            let client = test.start_client(client_name, None).await;
+            (func)(client).await;
+        })
+        .await,
+    );
+
+    host.end_test(suite_id, test_id, test_result).await;
 }
 
 #[derive(Clone)]
@@ -282,7 +275,7 @@ pub async fn run_test(
 }
 
 #[derive(Clone)]
-pub struct TwoClientTestSpec<'a> {
+pub struct TwoClientTestSpec {
     // These fields are displayed in the UI. Be sure to add
     // a meaningful description here.
     pub name: String,
@@ -293,12 +286,12 @@ pub struct TwoClientTestSpec<'a> {
     pub always_run: bool,
     // The Run function is invoked when the test executes.
     pub run: AsyncTwoClientsTestFunc,
-    pub client_a: &'a ClientDefinition,
-    pub client_b: &'a ClientDefinition,
+    pub client_a: ClientDefinition,
+    pub client_b: ClientDefinition,
 }
 
 #[async_trait]
-impl Testable for TwoClientTestSpec<'_> {
+impl Testable for TwoClientTestSpec {
     async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite) {
         let test_run = TestRun {
             suite_id,
@@ -308,7 +301,14 @@ impl Testable for TwoClientTestSpec<'_> {
             always_run: self.always_run,
         };
 
-        run_two_client_test(simulation, test_run, self.client_a, self.client_b, self.run).await;
+        run_two_client_test(
+            simulation,
+            test_run,
+            self.client_a.to_owned(),
+            self.client_b.to_owned(),
+            self.run,
+        )
+        .await;
     }
 }
 
@@ -316,35 +316,40 @@ impl Testable for TwoClientTestSpec<'_> {
 async fn run_two_client_test(
     host: Simulation,
     test: TestRun,
-    client_a: &ClientDefinition,
-    client_b: &ClientDefinition,
+    client_a: ClientDefinition,
+    client_b: ClientDefinition,
     func: AsyncTwoClientsTestFunc,
 ) {
     // Register test on simulation server and initialize the T.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
-
-    let mut test = &mut Test {
-        sim: host.clone(),
-        test_id,
-        suite: test.suite,
-        suite_id: test.suite_id,
-        result: Default::default(),
-    };
-
-    test.result.pass = true;
-
-    let client_a = test.start_client(client_a.name.clone()).await;
-    let client_b = test.start_client(client_b.name.clone()).await;
+    let suite_id = test.suite_id;
 
     // run test function
-    (func)(test, client_a, client_b).await;
+    let cloned_host = host.clone();
+    let test_result = extract_test_results(
+        tokio::spawn(async move {
+            let mut test = &mut Test {
+                sim: cloned_host,
+                test_id,
+                suite: test.suite,
+                suite_id,
+                result: Default::default(),
+            };
 
-    host.end_test(test.suite_id, test_id, test.result.clone())
-        .await;
+            test.result.pass = true;
+
+            let client_a = test.start_client(client_a.name, None).await;
+            let client_b = test.start_client(client_b.name, None).await;
+            (func)(client_a, client_b).await;
+        })
+        .await,
+    );
+
+    host.end_test(suite_id, test_id, test_result).await;
 }
 
 #[derive(Clone)]
-pub struct NClientTestSpec<'a> {
+pub struct NClientTestSpec {
     // These fields are displayed in the UI. Be sure to add
     // a meaningful description here.
     pub name: String,
@@ -355,11 +360,15 @@ pub struct NClientTestSpec<'a> {
     pub always_run: bool,
     // The Run function is invoked when the test executes.
     pub run: AsyncNClientsTestFunc,
-    pub clients: &'a Vec<&'a ClientDefinition>,
+    // length of private key array should match clients array
+    // this attribute is optional and is used for tests which need node_ids relative to the
+    // content within the test
+    pub private_keys: Option<Vec<Option<String>>>,
+    pub clients: Vec<ClientDefinition>,
 }
 
 #[async_trait]
-impl Testable for NClientTestSpec<'_> {
+impl Testable for NClientTestSpec {
     async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite) {
         let test_run = TestRun {
             suite_id,
@@ -369,7 +378,14 @@ impl Testable for NClientTestSpec<'_> {
             always_run: self.always_run,
         };
 
-        run_n_client_test(simulation, test_run, self.clients, self.run).await;
+        run_n_client_test(
+            simulation,
+            test_run,
+            self.private_keys.to_owned(),
+            self.clients.to_owned(),
+            self.run,
+        )
+        .await;
     }
 }
 
@@ -377,30 +393,41 @@ impl Testable for NClientTestSpec<'_> {
 async fn run_n_client_test(
     host: Simulation,
     test: TestRun,
-    clients: &Vec<&ClientDefinition>,
+    private_keys: Option<Vec<Option<String>>>,
+    clients: Vec<ClientDefinition>,
     func: AsyncNClientsTestFunc,
 ) {
     // Register test on simulation server and initialize the T.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
-
-    let mut test = &mut Test {
-        sim: host.clone(),
-        test_id,
-        suite: test.suite,
-        suite_id: test.suite_id,
-        result: Default::default(),
-    };
-
-    test.result.pass = true;
-
-    let mut client_vec: Vec<Client> = Vec::new();
-    for i in clients {
-        client_vec.push(test.start_client(i.name.clone()).await);
-    }
+    let suite_id = test.suite_id;
 
     // run test function
-    (func)(test, client_vec).await;
+    let cloned_host = host.clone();
+    let test_result = extract_test_results(
+        tokio::spawn(async move {
+            let mut test = &mut Test {
+                sim: cloned_host,
+                test_id,
+                suite: test.suite,
+                suite_id,
+                result: Default::default(),
+            };
 
-    host.end_test(test.suite_id, test_id, test.result.clone())
-        .await;
+            test.result.pass = true;
+
+            let mut client_vec: Vec<Client> = Vec::new();
+            for (index, client) in clients.into_iter().enumerate() {
+                let private_key = if let Some(private_keys) = private_keys.clone() {
+                    private_keys[index].to_owned()
+                } else {
+                    None
+                };
+                client_vec.push(test.start_client(client.name.to_owned(), private_key).await);
+            }
+            (func)(client_vec).await;
+        })
+        .await,
+    );
+
+    host.end_test(suite_id, test_id, test_result).await;
 }

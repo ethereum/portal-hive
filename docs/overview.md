@@ -73,7 +73,7 @@ stopped and removed. The `hive` command then exits as well.
 
 ## Running a client built from source
 
-To run a client built from source, we just hack portal-hive a little bit. Here is an example for how
+To run a client built from source, we just hack portal-hive a little bit. Here is an example of how
 to run against a local build of trin:
 
 Build a local image with a known tag, like `trin-dev`, using:
