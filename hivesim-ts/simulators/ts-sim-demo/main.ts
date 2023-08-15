@@ -63,7 +63,7 @@ const run_all_client_tests = async (test: Test, _client?: IClient) => {
 
 const main = async () => {
     const suite = new Suite(
-        "rpc-compat-ts",
+        "ts-sim-demo",
         "The RPC-compatibility test suite runs a set of RPC related tests against a running node. It tests client implementations of the JSON-RPC API for conformance with the portal network API specification.",
         )
     suite.add(
