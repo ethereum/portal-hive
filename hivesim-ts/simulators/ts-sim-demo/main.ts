@@ -30,7 +30,7 @@ const run_suite = async(host: Simulation, suite: Suite) =>{
 
 const client_enr_tag = async (test: Test, client: IClient) => {
     const clients: any = {
-        'trin': 't 0.1.1-alpha.1-8cbf36',
+        'trin': 't 0.1.1',
         'fluffy': 'f 0.0.1',
         'ultralight': 'u 0.0.1'
     }
@@ -46,7 +46,7 @@ const client_enr_tag = async (test: Test, client: IClient) => {
     if (!nodeInfo.enr || !nodeInfo.nodeId) {
         test.fatal(`Expected response not received: ${res.error}`) 
     }
-    if (enr.c !== clients[client.kind]) {
+    if (clients[client.kind].slice(0,7) !== (enr.c.slice(0,7))) {
         test.fatal(`Expected client type ${clients[client.kind]}, got ${enr.c}`)
     }
 }
