@@ -15,7 +15,7 @@ const client_enr_tag = async (test: Test, client: IClient) => {
     if (!nodeInfo.enr || !nodeInfo.nodeId) {
         test.fatal(`Expected response not received: ${res.error}`) 
     }
-    if (clients[client.kind].slice(0,7) !== (enr.c.slice(0,7))) {
+    if (clients[client.kind] !== (enr.c).slice(0,7)) {
         test.fatal(`Expected client type ${clients[client.kind]}, got ${enr.c}`)
     }
 }
