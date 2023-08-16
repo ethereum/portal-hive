@@ -1,4 +1,4 @@
-import { IClient, Test } from "./testapi"
+import { Test } from "./testapi"
 import { TestMatcher } from "./testmatch"
 import { ClientDefinition, StartNodeResponse, SuiteID, TestID, TestRequest } from "./types"
 export class Simulation {
