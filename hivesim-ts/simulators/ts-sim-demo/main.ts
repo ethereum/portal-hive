@@ -10,15 +10,9 @@ import { decodeENR } from "../../utils.js";
 const run_suite = async(host: Simulation, suite: Suite) =>{
     const name = suite.name
     const description = suite.description
-    console.log({
-        name,
-        description
-    })
     const suite_id = await host.start_suite(name, description)
-    console.log({suite_id, tests: suite.tests})
     
     for await (const test of suite.tests) {
-        console.log({test: test.name, suite_id, suite: suite.name})
         await test.run_test(
             host,
             suite_id,
@@ -38,11 +32,6 @@ const client_enr_tag = async (test: Test, client: IClient) => {
     const res = await client.rpc.request("discv5_nodeInfo", [])
     const nodeInfo = res.result
     const enr = decodeENR(nodeInfo.enr)
-    console.log({
-        nodeId: nodeInfo.nodeId,
-        enr_txt: nodeInfo.enr,
-        enr: enr
-    })
     if (!nodeInfo.enr || !nodeInfo.nodeId) {
         test.fatal(`Expected response not received: ${res.error}`) 
     }
@@ -74,8 +63,10 @@ const main = async () => {
             run: run_all_client_tests,
         })
     )
-    const sim = new Simulation('http://172.17.0.6:8081')
-    await suite.run(sim)
+
+        const sim = new Simulation(`${process.env['HIVE_SIMULATOR']}`)
+        await suite.run(sim)
+
 }
 
 main()
