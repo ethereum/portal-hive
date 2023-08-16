@@ -31,12 +31,8 @@ export interface Testable {
   ) => Promise<any>;
 }
 
-interface ISuite {
-  name: string;
-  description: string;
-  tests: Testable[];
-}
-export class Suite implements ISuite {
+
+export class Suite {
   name: string;
   description: string;
   tests: Testable[];

@@ -2,9 +2,6 @@ import { IClient, Test } from "./testapi"
 import { TestMatcher } from "./testmatch"
 import { ClientDefinition, StartNodeResponse, SuiteID, TestID, TestRequest } from "./types"
 export class Simulation {
-    default(): Simulation {
-        return new Simulation("")
-    }
     url: string
     m: TestMatcher
     constructor(url: string) {
