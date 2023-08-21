@@ -3,8 +3,8 @@ import { Simulation } from "./simulation.js";
 import { ClientDefinition, SuiteID, TestID, TestResult } from "./types";
 import { client_test_name } from "./utils.js";
 
-const { Client } = jayson
-type  HttpClient = jayson.HttpClient
+const { Client } = jayson;
+type HttpClient = jayson.HttpClient;
 type AsyncTestFunc = (test: Test, client?: IClient) => Promise<void>;
 type AsyncClientTestFunc = (test: Test, client: IClient) => Promise<void>;
 type AsyncTwoClientsTestFunc = (
@@ -49,9 +49,9 @@ export class Suite {
     const suiteId = await host.start_suite(this.name, this.description);
     for await (const test of this.tests) {
       await test.run_test(host, suiteId, this);
+    }
+    await host.end_suite(suiteId);
   }
-  const ended = await host.end_suite(suiteId);
-}
 
   async mustRunSuite(host: Simulation): Promise<void> {
     try {
@@ -63,13 +63,9 @@ export class Suite {
 }
 
 export interface IHttpClient {
-    /// HTTP transport client.
-    transport: HttpClient,
-    /// Request timeout. Defaults to 60sec.
-    request_timeout: number,
-    /// Request ID manager.
-    // id_manager: Arc<RequestIdManager>,
-  }
+  transport: HttpClient;
+  request_timeout: number;
+}
 export interface IClient {
   kind: string;
   container: string;
@@ -122,7 +118,7 @@ export class Test {
       this.suite_id,
       this.test_id,
       client_type
-      );
+    );
     const rpc_client = Client.http({ port: 8545, host: ip });
     const client: IClient = {
       kind: client_type,
@@ -170,10 +166,10 @@ export class ClientTestSpec implements IClientTestSpec {
   always_run: boolean;
   run: AsyncClientTestFunc;
   constructor(opts: {
-    name: string,
-    description: string,
-    always_run: boolean,
-    run: AsyncClientTestFunc
+    name: string;
+    description: string;
+    always_run: boolean;
+    run: AsyncClientTestFunc;
   }) {
     this.name = opts.name;
     this.description = opts.description;
@@ -210,13 +206,13 @@ export class ClientTestSpec implements IClientTestSpec {
       host,
       test_run.suite_id,
       test_run.suite,
-      test_id,
-      );
-      test.result.pass = true;
-      
-      const client = await test.start_client(client_name);
+      test_id
+    );
+    test.result.pass = true;
+
+    const client = await test.start_client(client_name);
     await run(test, client);
-    const end = await host.end_test( test);
+    const end = await host.end_test(test);
   }
 }
 
@@ -262,7 +258,7 @@ export class TestSpec implements ITestSpec {
     client?: IClient
   }) {
     this.name = opts.name;
-    this.description =opts.description;
+    this.description = opts.description;
     this.always_run = opts.always_run;
     this.run = opts.run;
     this.client = opts.client;
@@ -286,7 +282,7 @@ export const run_test = async (
   client: IClient | undefined,
   func: AsyncTestFunc
 ) => {
-  const test_id = await host.start_test(test.suite_id, test.name, test.desc);  
+  const test_id = await host.start_test(test.suite_id, test.name, test.desc);
   const t: Test = new Test(host, test.suite_id, test.suite, test_id);
   t.result.pass = true;
 
@@ -350,7 +346,7 @@ export class TwoClientTestSpec implements Testable {
       host,
       test_run.suite_id,
       test_run.suite,
-      test_id,
+      test_id
     );
     test.result.pass = true;
     const _client_a = await test.start_client(this.client_a.name);
