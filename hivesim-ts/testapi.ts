@@ -7,6 +7,11 @@ const { Client } = jayson;
 type HttpClient = jayson.HttpClient;
 type AsyncTestFunc = (test: Test, client?: IClient) => Promise<void>;
 type AsyncClientTestFunc = (test: Test, client: IClient) => Promise<void>;
+type AsyncTwoTestFunc = (
+  test: Test,
+  client_a?: IClient,
+  client_b?: IClient
+) => Promise<void>;
 type AsyncTwoClientsTestFunc = (
   test: Test,
   client_a: IClient,
@@ -166,6 +171,12 @@ interface IClientTestSpec extends Testable {
   description: string;
   always_run: boolean;
   run: AsyncClientTestFunc;
+}
+interface I2ClientTestSpec extends Testable {
+  name: string;
+  description: string;
+  always_run: boolean;
+  run: AsyncTwoClientsTestFunc;
 }
 export class ClientTestSpec implements IClientTestSpec {
   name: string;
