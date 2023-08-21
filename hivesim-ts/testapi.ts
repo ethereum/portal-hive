@@ -352,25 +352,6 @@ export class TwoClientTestSpec implements I2ClientTestSpec {
 }
 
 
-export const run_two_client_test = async (
-  host: Simulation,
-  test_run: ITestRun,
-  client_a: ClientDefinition,
-  client_b: ClientDefinition,
-  func: AsyncTwoClientsTestFunc
-) => {
-  const test_id = await host.start_test(
-    test_run.suite_id,
-    test_run.name,
-    test_run.desc
-  );
-  const test: Test = new Test(host, test_run.suite_id, test_run.suite, test_id);
-  test.result.pass = true;
-  const _client_a = await test.start_client(client_a.name);
-  const _client_b = await test.start_client(client_b.name);
-  await func(test, _client_a, _client_b);
-  await host.end_test(test);
-};
 
 export class NClientTestSpec implements Testable {
   name: string;
