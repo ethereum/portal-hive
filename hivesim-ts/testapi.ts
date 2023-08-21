@@ -153,6 +153,13 @@ export class Test {
     this.result.pass = false;
   }
 }
+interface ITestSpec extends Testable {
+  name: string;
+  description: string;
+  always_run: boolean;
+  run: AsyncTestFunc;
+  client?: IClient;
+}
 
 interface IClientTestSpec extends Testable {
   name: string;
@@ -216,34 +223,6 @@ export class ClientTestSpec implements IClientTestSpec {
   }
 }
 
-export async function run_client_test(
-  this: IClientTestSpec,
-  host: Simulation,
-  test_run: ITestRun,
-  client_name: string,
-  run: AsyncClientTestFunc
-) {
-  const test_id = await host.start_test(
-    test_run.suite_id,
-    test_run.name,
-    this.description
-  );
-  const test: Test = new Test(host, test_run.suite_id, test_run.suite, test_id);
-  test.result.pass = true;
-
-  const client = await test.start_client(client_name);
-    await run(test, client);
-  await host.end_test(test);
-}
-
-interface ITestSpec extends Testable {
-  name: string;
-  description: string;
-  always_run: boolean;
-  run: AsyncTestFunc;
-  client?: IClient;
-}
-
 export class TestSpec implements ITestSpec {
   name: string;
   description: string;
@@ -251,11 +230,11 @@ export class TestSpec implements ITestSpec {
   run: AsyncTestFunc;
   client?: IClient;
   constructor(opts: {
-    name: string,
-    description: string,
-    always_run: boolean,
-    run: AsyncTestFunc,
-    client?: IClient
+    name: string;
+    description: string;
+    always_run: boolean;
+    run: AsyncTestFunc;
+    client?: IClient;
   }) {
     this.name = opts.name;
     this.description = opts.description;
