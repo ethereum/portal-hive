@@ -281,51 +281,55 @@ export const run_test = async (
   await host.end_test(t);
 };
 
-export class TwoClientTestSpec implements Testable {
+export class TwoClientTestSpec implements I2ClientTestSpec {
   name: string;
   description: string;
   always_run: boolean;
   run: AsyncTwoClientsTestFunc;
-  client_a: ClientDefinition;
-  client_b: ClientDefinition;
-
-  constructor(
-    name: string,
-    description: string,
-    always_run: boolean,
-    run: AsyncTwoClientsTestFunc,
-    client_a: ClientDefinition,
-    client_b: ClientDefinition
-  ) {
-    this.name = name;
-    this.description = description;
-    this.always_run = always_run;
-    this.run = run;
-    this.client_a = client_a;
-    this.client_b = client_b;
+  constructor(opts: {
+    name: string;
+    description: string;
+    always_run: boolean;
+    run: AsyncTwoClientsTestFunc;
+  }) {
+    this.name = opts.name;
+    this.description = opts.description;
+    this.always_run = opts.always_run;
+    this.run = opts.run;
   }
 
-  async run_test(simulation: Simulation, suite_id: SuiteID, suite: Suite) {
-    const test_run: ITestRun = {
-      suite_id: suite_id,
-      suite: suite,
-      name: this.name,
-      desc: this.description,
-      always_run: this.always_run,
-    };
-    await run_two_client_test(
-      simulation,
-      test_run,
-      this.client_a,
-      this.client_b,
-      this.run
-    );
+  async run_test(sim: Simulation, suite_id: SuiteID, suite: Suite) {
+    const clients = await sim.client_types();
+    for (const client of clients) {
+      const client_name = client.name;
+      for (const client2 of clients) {
+        const client_2_name = client2.name;
+        const name = client_test_name(this.name, client_name);
+        const test_run: ITestRun = {
+          suite_id,
+          suite,
+          name: name + " --> " + client_2_name,
+          desc: this.description,
+          always_run: this.always_run,
+        };
+        await this.run_2_client_test(
+          sim,
+          test_run,
+          client_name,
+          client_2_name,
+          this.run
+        );
+      }
+    }
   }
 
-  async run_two_client_test(
+
+  async run_2_client_test(
     host: Simulation,
     test_run: ITestRun,
-    func: AsyncTwoClientsTestFunc
+    client_a_name: string,
+    client_b_name: string,
+    run: AsyncTwoClientsTestFunc
   ) {
     const test_id = await host.start_test(
       test_run.suite_id,
@@ -339,10 +343,11 @@ export class TwoClientTestSpec implements Testable {
       test_id
     );
     test.result.pass = true;
-    const _client_a = await test.start_client(this.client_a.name);
-    const _client_b = await test.start_client(this.client_b.name);
-    await func(test, _client_a, _client_b);
-    await host.end_test(test);
+
+    const client_a = await test.start_client(client_a_name);
+    const client_b = await test.start_client(client_b_name);
+    await run(test, client_a, client_b);
+    const end = await host.end_test(test);
   }
 }
 
