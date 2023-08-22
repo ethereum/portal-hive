@@ -1,3 +1,4 @@
+import exp from "constants";
 import { Simulation } from "../../simulation.js";
 import {
   ClientTestSpec,
@@ -59,21 +60,25 @@ const n_client_demo = async (test: Test, clients: IClient[]) => {
   const clientsInfo = await Promise.all(
     clients.map(async (client) => {
       const res = await client.rpc.request("discv5_nodeInfo", []);
-      return res.result;
+      return [client.kind, res.result];
     })
   );
   console.log(clientsInfo);
-  if (clientsInfo.some((info) => !info)) {
-    test.fatal(
-      `Expected response not received: ${clientsInfo.map((info) => info.error)}`
-    );
+  for (const [kind, info] of clientsInfo) {
+    if (!info.enr || !info.nodeId) {
+      test.fatal(`${kind}: Expected response not received`);
+    }
   }
   for await (const [i, client] of clients.entries()) {
     const res = await client.rpc.request("portal_historyPing", [
-      clientsInfo[(i + 1) % clients.length].enr,
+      clientsInfo[(i + 1) % clients.length][1].enr,
     ]);
     if (!res.result) {
-      test.fatal(`Expected response not received`);
+      test.fatal(
+        `${
+          clientsInfo[(i + 1) % clients.length][0]
+        }: Expected response not received`
+      );
     }
   }
   const routingTables = await Promise.all(
@@ -82,27 +87,23 @@ const n_client_demo = async (test: Test, clients: IClient[]) => {
         "portal_historyRoutingTableInfo",
         []
       );
-      return res.result;
+      return [client.kind, res.result];
     })
   );
   console.log(routingTables);
   if (routingTables.some((table) => !table)) {
-    test.fatal(
-      `Expected response not received: ${routingTables.map(
-        (table) => table.error
-      )}`
-    );
+    test.fatal(`Expected response not received`);
   }
   const errors = [];
-  for (const table of routingTables) {
-    const peers = Object.values(table.buckets)
-      .map((b: any) => Object.values(b))
-      .flat()
-      .map((p: any) => p.enr);
-    if (peers.length < clients.length - 1) {
+  for (const [client, table] of routingTables) {
+    const expected = clientsInfo
+      .map(([_, c]) => [_, c.nodeId])
+      .filter(([k, _]) => k !== client);
+    const peers = Object.values(table.buckets).flat();
+    if (peers.length < expected.length) {
       errors.push(
-        `Expected ${JSON.stringify(
-          clientsInfo.map((c) => c.nodeId)
+        `${client}: expected ${JSON.stringify(
+          expected
         )} peers, got ${JSON.stringify(peers)}`
       );
     }
