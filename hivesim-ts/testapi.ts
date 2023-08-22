@@ -7,11 +7,6 @@ const { Client } = jayson;
 type HttpClient = jayson.HttpClient;
 type AsyncTestFunc = (test: Test, client?: IClient) => Promise<void>;
 type AsyncClientTestFunc = (test: Test, client: IClient) => Promise<void>;
-type AsyncTwoTestFunc = (
-  test: Test,
-  client_a?: IClient,
-  client_b?: IClient
-) => Promise<void>;
 type AsyncTwoClientsTestFunc = (
   test: Test,
   client_a: IClient,
@@ -35,7 +30,6 @@ export interface Testable {
     suite: Suite
   ) => Promise<any>;
 }
-
 
 export class Suite {
   name: string;
@@ -323,7 +317,6 @@ export class TwoClientTestSpec implements I2ClientTestSpec {
     }
   }
 
-
   async run_2_client_test(
     host: Simulation,
     test_run: ITestRun,
@@ -351,60 +344,58 @@ export class TwoClientTestSpec implements I2ClientTestSpec {
   }
 }
 
-
-
 export class NClientTestSpec implements Testable {
   name: string;
   description: string;
   always_run: boolean;
   run: AsyncNClientsTestFunc;
-  clients: ClientDefinition[];
-  constructor(
-    name: string,
-    description: string,
-    always_run: boolean,
-    run: AsyncNClientsTestFunc,
-    clients: ClientDefinition[]
-  ) {
-    this.name = name;
-    this.description = description;
-    this.always_run = always_run;
-    this.run = run;
-    this.clients = clients;
+  constructor(opts: {
+    name: string;
+    description: string;
+    always_run: boolean;
+    run: AsyncNClientsTestFunc;
+  }) {
+    this.name = opts.name;
+    this.description = opts.description;
+    this.always_run = opts.always_run;
+    this.run = opts.run;
   }
   async run_test(simulation: Simulation, suite_id: SuiteID, suite: Suite) {
-    const test_run: ITestRun = {
-      suite_id: suite_id,
-      suite: suite,
-      name: this.name,
-      desc: this.description,
-      always_run: this.always_run,
-    };
-    await run_n_client_test(simulation, test_run, this.clients, this.run);
+    const clients = await simulation.client_types();
+    const clientNames = clients.map((client) => client.name);
+      const test_run: ITestRun = {
+        suite_id,
+        suite,
+        name: this.name + '-->' + clients.map((c) => c.name).join(" + "),
+        desc: this.description,
+        always_run: this.always_run,
+      };
+      await this.run_n_client_test(simulation, test_run, clientNames, this.run);
+  }
+  async run_n_client_test(
+    host: Simulation,
+    test_run: ITestRun,
+    clientNames: string[],
+    run: AsyncNClientsTestFunc
+  ) {
+    const test_id = await host.start_test(
+      test_run.suite_id,
+      test_run.name,
+      test_run.desc
+    );
+    const test: Test = new Test(
+      host,
+      test_run.suite_id,
+      test_run.suite,
+      test_id
+    );
+    test.result.pass = true;
+    const client_vec: IClient[] = await Promise.all(
+      clientNames.map((name) => {
+        return test.start_client(name);
+      })
+    )
+    await run(test, client_vec);
+    await host.end_test(test);
   }
 }
-
-export const run_n_client_test = async (
-  host: Simulation,
-  test_run: ITestRun,
-  clients: ClientDefinition[],
-  func: AsyncNClientsTestFunc
-) => {
-  const test_id = await host.start_test(
-    test_run.suite_id,
-    test_run.name,
-    test_run.desc
-  );
-  const test: Test = new Test(host, test_run.suite_id, test_run.suite, test_id);
-  test.result.pass = true;
-  const client_vec: IClient[] = await Promise.all(
-    clients.map((client) => {
-      return test.start_client(client.name);
-    })
-  );
-  for (const client of clients) {
-    await test.start_client(client.name);
-  }
-  await func(test, client_vec);
-  await host.end_test(test);
-};
