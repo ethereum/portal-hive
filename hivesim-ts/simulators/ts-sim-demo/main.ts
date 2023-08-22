@@ -86,18 +86,30 @@ const n_client_demo = async (test: Test, clients: IClient[]) => {
     })
   );
   console.log(routingTables);
-    if (routingTables.some((table) => !table)) {
-      test.fatal(
-        `Expected response not received: ${routingTables.map(
-          (table) => table.error
-        )}`
+  if (routingTables.some((table) => !table)) {
+    test.fatal(
+      `Expected response not received: ${routingTables.map(
+        (table) => table.error
+      )}`
+    );
+  }
+  const errors = [];
+  for (const table of routingTables) {
+    const peers = Object.values(table.buckets)
+      .map((b: any) => Object.values(b))
+      .flat()
+      .map((p: any) => p.enr);
+    if (peers.length < clients.length - 1) {
+      errors.push(
+        `Expected ${JSON.stringify(
+          clientsInfo.map((c) => c.nodeId)
+        )} peers, got ${JSON.stringify(peers)}`
       );
     }
-    for (const table of routingTables) {
-      if (clientsInfo.some((info) => !table.includes(info.nodeId))) {
-        test.fatal(`Expected routing table to include all nodes, got ${table}`);
-      }
-    }
+  }
+  if (errors.length > 0) {
+    test.fatal(errors.join("\n"));
+  }
 };
 
 const run_all_client_tests = async (test: Test) => {
