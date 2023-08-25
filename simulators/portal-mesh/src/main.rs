@@ -53,15 +53,30 @@ dyn_async! {
         // Get all available portal clients
         let clients = test.sim.client_types().await;
 
+        let private_key_1 = "fc34e57cc83ed45aae140152fd84e2c21d1f4d46e19452e13acc7ee90daa5bac".to_string();
+        let private_key_2 = "e5add57dc4c9ef382509e61ce106ec86f60eb73bbfe326b00f54bf8e1819ba11".to_string();
+
         // Iterate over all possible pairings of clients and run the tests (including self-pairings)
         for ((client_a, client_b), client_c) in clients.iter().cartesian_product(clients.iter()).cartesian_product(clients.iter()) {
             test.run(
                 NClientTestSpec {
-                    name: format!("FIND_CONTENT content stored 2 nodes away stored in client C. A:{} --> B:{} --> C:{}", client_a.name, client_b.name, client_c.name),
+                    name: format!("FIND_CONTENT content stored 2 nodes away stored in client C (Client B closer to content then C). A:{} --> B:{} --> C:{}", client_a.name, client_b.name, client_c.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_two_jumps,
-                    private_keys: None,
+                    private_keys: Some(vec![None, Some(private_key_2.clone()), Some(private_key_1.clone())]),
+                    clients: vec![client_a.clone(), client_b.clone(), client_c.clone()],
+                }
+            ).await;
+
+            // Remove this after the clients are stable across two jumps test
+            test.run(
+                NClientTestSpec {
+                    name: format!("FIND_CONTENT content stored 2 nodes away stored in client C (Client C closer to content then B). A:{} --> B:{} --> C:{}", client_a.name, client_b.name, client_c.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_find_content_two_jumps,
+                    private_keys: Some(vec![None, Some(private_key_1.clone()), Some(private_key_2.clone())]),
                     clients: vec![client_a.clone(), client_b.clone(), client_c.clone()],
                 }
             ).await;
@@ -95,7 +110,6 @@ dyn_async! {
                 panic!("Error getting node info: {err:?}");
             }
         };
-
 
         // seed client_c_enr into routing table of client_b
         match HistoryNetworkApiClient::add_enr(&client_b.rpc, client_c_enr.clone()).await {
