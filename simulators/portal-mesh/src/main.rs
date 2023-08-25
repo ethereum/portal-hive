@@ -58,25 +58,24 @@ dyn_async! {
 
         // Iterate over all possible pairings of clients and run the tests (including self-pairings)
         for ((client_a, client_b), client_c) in clients.iter().cartesian_product(clients.iter()).cartesian_product(clients.iter()) {
-
-            // Test block header with proof
             test.run(
                 NClientTestSpec {
-                    name: format!("FIND_CONTENT A gets 0 ENRs, if B is closer to content than C. A:{} --> B:{} --> C:{}", client_a.name, client_b.name, client_c.name),
+                    name: format!("FIND_CONTENT content stored 2 nodes away stored in client C (Client B closer to content then C). A:{} --> B:{} --> C:{}", client_a.name, client_b.name, client_c.name),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_find_content_recipient_is_closer_to_content,
+                    run: test_find_content_two_jumps,
                     private_keys: Some(vec![None, Some(private_key_2.clone()), Some(private_key_1.clone())]),
                     clients: vec![client_a.clone(), client_b.clone(), client_c.clone()],
                 }
             ).await;
 
+            // Remove this after the clients are stable across two jumps test
             test.run(
                 NClientTestSpec {
-                    name: format!("FIND_CONTENT A gets ENR for C, if B is further from content than C. A:{} --> B:{} --> C:{}", client_a.name, client_b.name, client_c.name),
+                    name: format!("FIND_CONTENT content stored 2 nodes away stored in client C (Client C closer to content then B). A:{} --> B:{} --> C:{}", client_a.name, client_b.name, client_c.name),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_find_content_recipient_knows_node_closer_to_content,
+                    run: test_find_content_two_jumps,
                     private_keys: Some(vec![None, Some(private_key_1.clone()), Some(private_key_2.clone())]),
                     clients: vec![client_a.clone(), client_b.clone(), client_c.clone()],
                 }
@@ -86,64 +85,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_find_content_recipient_is_closer_to_content<'a> (clients: Vec<Client>) {
-        let (client_a, client_b, client_c) = match clients.iter().collect_tuple() {
-            Some((client_a, client_b, client_c)) => (client_a, client_b, client_c),
-            None => {
-                panic!("Unable to get expected amount of clients from NClientTestSpec");
-            }
-        };
-
-        let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
-
-        // get enr for b and c to seed for the jumps
-        let client_b_enr = match client_b.rpc.node_info().await {
-            Ok(node_info) => node_info.enr,
-            Err(err) => {
-                panic!("Error getting node info: {err:?}");
-            }
-        };
-
-        let client_c_enr = match client_c.rpc.node_info().await {
-            Ok(node_info) => node_info.enr,
-            Err(err) => {
-                panic!("Error getting node info: {err:?}");
-            }
-        };
-
-        // seed client_c_enr into routing table of client_b
-        match HistoryNetworkApiClient::add_enr(&client_b.rpc, client_c_enr.clone()).await {
-            Ok(response) => match response {
-                true => (),
-                false => panic!("AddEnr expected to get true and instead got false")
-            },
-            Err(err) => panic!("{}", &err.to_string()),
-        }
-
-        let enrs = match client_a.rpc.find_content(client_b_enr.clone(), header_with_proof_key.clone()).await {
-            Ok(result) => {
-                match result {
-                    ContentInfo::Enrs{ enrs } => {
-                        enrs
-                    },
-                    other => {
-                        panic!("Error: (Enrs) Unexpected FINDCONTENT response not: {other:?}");
-                    }
-                }
-            },
-            Err(err) => {
-                panic!("Error: (Enrs) Unable to get response from FINDCONTENT request: {err:?}");
-            }
-        };
-
-        if !enrs.is_empty() {
-            panic!("Because content XOR node B is less then content XOR node C, A should get 0 enrs, but got: length {}", enrs.len());
-        }
-    }
-}
-
-dyn_async! {
-    async fn test_find_content_recipient_knows_node_closer_to_content<'a> (clients: Vec<Client>) {
+    async fn test_find_content_two_jumps<'a> (clients: Vec<Client>) {
         let (client_a, client_b, client_c) = match clients.iter().collect_tuple() {
             Some((client_a, client_b, client_c)) => (client_a, client_b, client_c),
             None => {
@@ -176,6 +118,11 @@ dyn_async! {
                 false => panic!("AddEnr expected to get true and instead got false")
             },
             Err(err) => panic!("{}", &err.to_string()),
+        }
+
+        // send a ping from client B to C to connect the clients
+        if let Err(err) = client_b.rpc.ping(client_c_enr.clone()).await {
+                panic!("Unable to receive pong info: {err:?}");
         }
 
         // seed the data into client_c
