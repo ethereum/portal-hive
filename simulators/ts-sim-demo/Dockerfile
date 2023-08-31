@@ -18,6 +18,7 @@ COPY ./hivesim-ts ./../../hivesim-ts
 RUN npm i
 RUN npm run build
 
+
 COPY . .
 RUN pwd
 RUN ls -la
