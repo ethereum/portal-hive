@@ -2,7 +2,7 @@ FROM node:18-alpine
 
 RUN apk update && apk add --no-cache bash g++ make git python3 && rm -rf /var/cache/apk/*
 
-RUN git clone --depth 1 https://github.com/ethereumjs/ultralight.git 
+RUN git clone --branch hive-interop-updates https://github.com/ethereumjs/ultralight.git 
 
 WORKDIR /ultralight
 

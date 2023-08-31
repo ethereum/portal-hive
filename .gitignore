@@ -7,3 +7,8 @@ workspace
 # don't include target files
 hivesim-rs/target
 simulators/*/target
+node_modules/
+dist/
+hiveview
+package-lock.json
+tsconfig.tsbuildinfo
