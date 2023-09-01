@@ -588,9 +588,12 @@ dyn_async! {
             }
         };
 
-        // send a ping so client A sees it as a seen/connected node
-        if let Err(err) = client_a.rpc.ping(target_enr.clone()).await {
-                panic!("Unable to receive pong info: {err:?}");
+        match HistoryNetworkApiClient::add_enr(&client_a.rpc, target_enr.clone()).await {
+            Ok(response) => match response {
+                true => (),
+                false => panic!("AddEnr expected to get true and instead got false")
+            },
+            Err(err) => panic!("{}", &err.to_string()),
         }
 
         match client_a.rpc.recursive_find_content(block_body_key.clone()).await {
@@ -659,11 +662,6 @@ dyn_async! {
             Err(err) => panic!("{}", &err.to_string()),
         }
 
-        // send a ping so client A sees it as a seen/connected node
-        if let Err(err) = client_a.rpc.ping(target_enr.clone()).await {
-                panic!("Unable to receive pong info: {err:?}");
-        }
-
         match client_a.rpc.recursive_find_content(receipts_key.clone()).await {
             Ok(result) => {
                 match result {
@@ -710,9 +708,12 @@ dyn_async! {
             }
         };
 
-        // send a ping so client A sees it as a seen/connected node
-        if let Err(err) = client_a.rpc.ping(target_enr.clone()).await {
-                panic!("Unable to receive pong info: {err:?}");
+        match HistoryNetworkApiClient::add_enr(&client_a.rpc, target_enr.clone()).await {
+            Ok(response) => match response {
+                true => (),
+                false => panic!("AddEnr expected to get true and instead got false")
+            },
+            Err(err) => panic!("{}", &err.to_string()),
         }
 
         match client_a.rpc.recursive_find_content(header_with_proof_key.clone()).await {
