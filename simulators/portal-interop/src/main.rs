@@ -581,15 +581,15 @@ dyn_async! {
             }
         }
 
-        let target_enr = match client_b.rpc.node_info().await {
+        let target_enr = match client_a.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
                 panic!("Error getting node info: {err:?}");
             }
         };
 
-        // send a ping so client A sees it as a seen/connected node
-        if let Err(err) = client_a.rpc.ping(target_enr.clone()).await {
+        // send a ping so ENR of client b gets added to routing table of client a
+        if let Err(err) = client_b.rpc.ping(target_enr.clone()).await {
                 panic!("Unable to receive pong info: {err:?}");
         }
 
@@ -644,23 +644,15 @@ dyn_async! {
             }
         }
 
-        let target_enr = match client_b.rpc.node_info().await {
+        let target_enr = match client_a.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
                 panic!("Error getting node info: {err:?}");
             }
         };
 
-        match HistoryNetworkApiClient::add_enr(&client_a.rpc, target_enr.clone()).await {
-            Ok(response) => match response {
-                true => (),
-                false => panic!("AddEnr expected to get true and instead got false")
-            },
-            Err(err) => panic!("{}", &err.to_string()),
-        }
-
-        // send a ping so client A sees it as a seen/connected node
-        if let Err(err) = client_a.rpc.ping(target_enr.clone()).await {
+        // send a ping so ENR of client b gets added to routing table of client a
+        if let Err(err) = client_b.rpc.ping(target_enr.clone()).await {
                 panic!("Unable to receive pong info: {err:?}");
         }
 
@@ -703,15 +695,15 @@ dyn_async! {
             }
         }
 
-        let target_enr = match client_b.rpc.node_info().await {
+        let target_enr = match client_a.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
                 panic!("Error getting node info: {err:?}");
             }
         };
 
-        // send a ping so client A sees it as a seen/connected node
-        if let Err(err) = client_a.rpc.ping(target_enr.clone()).await {
+        // send a ping so ENR of client b gets added to routing table of client a
+        if let Err(err) = client_b.rpc.ping(target_enr.clone()).await {
                 panic!("Unable to receive pong info: {err:?}");
         }
 
