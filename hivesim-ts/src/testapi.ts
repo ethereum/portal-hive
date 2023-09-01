@@ -321,7 +321,10 @@ export class NClientTestSpec implements Testable {
     this.run = opts.run
   }
   async run_test(simulation: Simulation, suite_id: SuiteID, suite: Suite) {
-    const clients = await simulation.client_types()
+    let clients = await simulation.client_types()
+    if (clients.length === 1) {
+      clients = [clients[0], clients[0]]
+    }
     const clientNames = clients.map((client) => client.name)
     const test_run: ITestRun = {
       suite_id,
