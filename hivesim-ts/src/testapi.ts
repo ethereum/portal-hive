@@ -353,3 +353,61 @@ export class NClientTestSpec implements Testable {
     await host.end_test(test)
   }
 }
+export class NetworkNClientTestSpec implements Testable {
+  name: string
+  description: string
+  always_run: boolean
+  run: AsyncNClientsTestFunc
+  size: number
+  constructor(opts: {
+    name: string
+    description: string
+    always_run: boolean
+    run: AsyncNClientsTestFunc
+    size?: number
+  }) {
+    this.name = opts.name
+    this.description = opts.description
+    this.always_run = opts.always_run
+    this.run = opts.run
+    this.size = opts.size ?? 1
+  }
+  async run_test(simulation: Simulation, suite_id: SuiteID, suite: Suite) {
+    const clients = await simulation.client_types()
+    const clientNames = clients.map((client) => client.name)
+    for await (const client of clients) {
+      const _clientNames = [client.name]
+      for (let i = 0; i < this.size; i++) {
+        _clientNames.push(...clientNames)
+      }
+      while (_clientNames.length < 4) {
+        _clientNames.push(..._clientNames)
+      }
+      const test_run: ITestRun = {
+        suite_id,
+        suite,
+        name: `${this.name} +--> [${client.name}] (network size: ${_clientNames.length})`,
+        desc: this.description,
+        always_run: this.always_run,
+      }
+      await this.run_n_client_test(simulation, test_run, _clientNames, this.run)
+    }
+  }
+  async run_n_client_test(
+    host: Simulation,
+    test_run: ITestRun,
+    clientNames: string[],
+    run: AsyncNClientsTestFunc,
+  ) {
+    const test_id = await host.start_test(test_run.suite_id, test_run.name, test_run.desc)
+    const test: Test = new Test(host, test_run.suite_id, test_run.suite, test_id)
+    test.result.pass = true
+    const client_vec: IClient[] = await Promise.all(
+      clientNames.map((name) => {
+        return test.start_client(name)
+      }),
+    )
+    await run(test, client_vec)
+    await host.end_test(test)
+  }
+}
