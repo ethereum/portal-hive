@@ -154,7 +154,7 @@ dyn_async! {
         .await;
 
         test.run(ClientTestSpec {
-            name: "RECURSIVE_FIND_CONTENT Content Absent".to_string(),
+            name: "portal_historyRecursiveFindContent Content Absent".to_string(),
             description: "".to_string(),
             always_run: false,
             run: test_recursive_find_content_content_absent,
@@ -468,7 +468,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    // test that a node will return a AbsentContent via RECURSIVEFINDCONTENT when the data doesn't exist
+    // test that a node will return a AbsentContent via RecursiveFindContent when the data doesn't exist
     async fn test_recursive_find_content_content_absent<'a> (client: Client) {
         let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(CONTENT_KEY)).unwrap();
 
@@ -477,16 +477,16 @@ dyn_async! {
                 match result {
                     ContentInfo::Content{ content: ethportal_api::PossibleHistoryContentValue::ContentAbsent, utp_transfer } => {
                         if utp_transfer {
-                            panic!("Error: Unexpected RECURSIVEFINDCONTENT response: utp_transfer was supposed to be false");
+                            panic!("Error: Unexpected RecursiveFindContent response: utp_transfer was supposed to be false");
                         }
                     },
                     other => {
-                        panic!("Error: Unexpected RECURSIVEFINDCONTENT response: {other:?}");
+                        panic!("Error: Unexpected RecursiveFindContent response: {other:?}");
                     }
                 }
             },
             Err(err) => {
-                panic!("Error: Unable to get response from RECURSIVEFINDCONTENT request: {err:?}");
+                panic!("Error: Unable to get response from RecursiveFindContent request: {err:?}");
             }
         }
     }
