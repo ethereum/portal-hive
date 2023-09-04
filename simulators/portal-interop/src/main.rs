@@ -589,9 +589,8 @@ dyn_async! {
         };
 
         match HistoryNetworkApiClient::add_enr(&client_a.rpc, target_enr.clone()).await {
-            Ok(response) => match response {
-                true => (),
-                false => panic!("AddEnr expected to get true and instead got false")
+            Ok(response) => if !response {
+                panic!("AddEnr expected to get true and instead got false")
             },
             Err(err) => panic!("Failed while trying to add client B's ENR to client A: {err}"),
         }
