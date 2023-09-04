@@ -535,7 +535,7 @@ dyn_async! {
         match HistoryNetworkApiClient::get_enr(&client_b.rpc, stored_enr.node_id()).await {
             Ok(response) => {
                 if response != stored_enr {
-                    panic!("Response from GetEnr didn't return expected ENR")
+                    panic!("Response from GetEnr didn't return expected ENR. Got: {response}; Expected: {stored_enr}")
                 }
             },
             Err(err) => panic!("Failed while trying to get client A's ENR from client B: {err}"),
