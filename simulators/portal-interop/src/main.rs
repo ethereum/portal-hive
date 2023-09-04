@@ -593,7 +593,7 @@ dyn_async! {
                 true => (),
                 false => panic!("AddEnr expected to get true and instead got false")
             },
-            Err(err) => panic!("{}", &err.to_string()),
+            Err(err) => panic!("Failed while trying to add client B's ENR to client A: {err}"),
         }
 
         match client_a.rpc.recursive_find_content(block_body_key.clone()).await {
