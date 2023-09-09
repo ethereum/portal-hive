@@ -1,13 +1,16 @@
 use ethportal_api::types::distance::{Metric, XorMetric};
 use ethportal_api::types::portal::ContentInfo;
 use ethportal_api::{
-    Discv5ApiClient, HistoryContentKey, HistoryContentValue, HistoryNetworkApiClient,
+    ContentValue, Discv5ApiClient, HistoryContentKey, HistoryContentValue, HistoryNetworkApiClient,
     PossibleHistoryContentValue,
 };
 use hivesim::{dyn_async, Client, Simulation, Suite, Test, TestSpec, TwoClientTestSpec};
 use itertools::Itertools;
 use serde_json::json;
+use serde_json::Value;
 use tokio::time::Duration;
+
+const MAX_PORTAL_CONTENT_PAYLOAD_SIZE: usize = 1165;
 
 // Header with proof for block number 14764013
 const HEADER_WITH_PROOF_KEY: &str =
@@ -159,25 +162,13 @@ dyn_async! {
                 }
             ).await;
 
-            // Test recursive find content receipts over uTP
+            // Test recursive find content Header With Proof
             test.run(
                 TwoClientTestSpec {
-                    name: format!("RECURSIVE_FIND_CONTENT Block Body over uTP {} --> {}", client_a.name, client_b.name),
+                    name: format!("RECURSIVE_FIND_CONTENT Header block 1 {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_recursive_find_content_block_body_over_utp,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test recursive find content receipts over uTP
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("RECURSIVE_FIND_CONTENT Receipts over uTP {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_recursive_find_content_receipts_over_utp,
+                    run: test_recursive_find_content_header_block_1,
                     client_a: client_a.clone(),
                     client_b: client_b.clone(),
                 }
@@ -186,10 +177,142 @@ dyn_async! {
             // Test recursive find content Header With Proof
             test.run(
                 TwoClientTestSpec {
-                    name: format!("RECURSIVE_FIND_CONTENT Header {} --> {}", client_a.name, client_b.name),
+                    name: format!("RECURSIVE_FIND_CONTENT Header block 100 {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_recursive_find_content_header,
+                    run: test_recursive_find_content_header_block_100,
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
+                }
+            ).await;
+
+            // Test recursive find content Header With Proof
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("RECURSIVE_FIND_CONTENT Header block 7000000 {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_recursive_find_content_header_block_7000000,
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
+                }
+            ).await;
+
+            // Test recursive find content Header With Proof
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("RECURSIVE_FIND_CONTENT Header block 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_recursive_find_content_header_block_15600000,
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
+                }
+            ).await;
+
+            // Test recursive find content Header With Proof
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("RECURSIVE_FIND_CONTENT Header block 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_recursive_find_content_header_block_17510000,
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
+                }
+            ).await;
+
+            // Test recursive find content Header With Proof
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("RECURSIVE_FIND_CONTENT Block Body over uTP block 1 {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_recursive_find_content_block_body_block_1,
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
+                }
+            ).await;
+
+            // Test recursive find content Header With Proof
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("RECURSIVE_FIND_CONTENT Block Body over uTP block 100 {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_recursive_find_content_block_body_block_100,
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
+                }
+            ).await;
+
+            // Test recursive find content Header With Proof
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("RECURSIVE_FIND_CONTENT Block Body over uTP block 7000000 {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_recursive_find_content_block_body_block_7000000,
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
+                }
+            ).await;
+
+            // Test recursive find content Header With Proof
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("RECURSIVE_FIND_CONTENT Block Body over uTP block 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_recursive_find_content_block_body_block_15600000,
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
+                }
+            ).await;
+
+            // Test recursive find content Header With Proof
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("RECURSIVE_FIND_CONTENT Header block 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_recursive_find_content_block_body_block_17510000,
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
+                }
+            ).await;
+
+            // Test recursive find content Header With Proof
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("RECURSIVE_FIND_CONTENT Receipts over uTP block 7000000 {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_recursive_find_content_receipts_block_7000000,
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
+                }
+            ).await;
+
+            // Test recursive find content Header With Proof
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("RECURSIVE_FIND_CONTENT Receipts over uTP block 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_recursive_find_content_receipts_block_15600000,
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
+                }
+            ).await;
+
+            // Test recursive find content Header With Proof
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("RECURSIVE_FIND_CONTENT Receipts over uTP block 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_recursive_find_content_receipts_block_17510000,
                     client_a: client_a.clone(),
                     client_b: client_b.clone(),
                 }
@@ -573,94 +696,240 @@ dyn_async! {
 }
 
 dyn_async! {
-    // test that a node will return a block body via RECURSIVEFINDCONTENT over uTP that it has stored locally
-    async fn test_recursive_find_content_block_body_over_utp<'a> (client_a: Client, client_b: Client) {
-        let block_body_key: HistoryContentKey = serde_json::from_value(json!(BLOCK_BODY_KEY)).unwrap();
-        let block_body_value: HistoryContentValue = serde_json::from_value(json!(BLOCK_BODY_VALUE)).unwrap();
-
-        let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
-        let header_with_proof_value: HistoryContentValue = serde_json::from_value(json!(HEADER_WITH_PROOF_VALUE)).unwrap();
-
-        match client_b.rpc.store(block_body_key.clone(), block_body_value.clone()).await {
-            Ok(result) => if !result {
-                panic!("Error storing block body for recursive find content block body over utp");
-            },
-            Err(err) => {
-                panic!("Error storing block body: {err:?}");
-            }
-        }
-
-        match client_b.rpc.store(header_with_proof_key.clone(), header_with_proof_value.clone()).await {
-            Ok(result) => if !result {
-                panic!("Unable to store header with proof for recursive find content");
-            },
-            Err(err) => {
-                panic!("Error storing header with proof for recursive find content: {err:?}");
-            }
-        }
-
-        let target_enr = match client_b.rpc.node_info().await {
-            Ok(node_info) => node_info.enr,
-            Err(err) => {
-                panic!("Error getting node info: {err:?}");
-            }
-        };
-
-        match HistoryNetworkApiClient::add_enr(&client_a.rpc, target_enr.clone()).await {
-            Ok(response) => if !response {
-                panic!("AddEnr expected to get true and instead got false")
-            },
-            Err(err) => panic!("Failed while trying to add client B's ENR to client A: {err}"),
-        }
-
-        match client_a.rpc.recursive_find_content(block_body_key.clone()).await {
-            Ok(result) => {
-                match result {
-                    ContentInfo::Content{ content: ethportal_api::PossibleHistoryContentValue::ContentPresent(val), utp_transfer } => {
-                        if val != block_body_value {
-                            panic!("Error: Unexpected RECURSIVEFINDCONTENT response: didn't return expected block body");
-                        }
-
-                        if !utp_transfer {
-                            panic!("Error: Unexpected RECURSIVEFINDCONTENT response: utp_transfer was supposed to be true");
-                        }
-                    },
-                    other => {
-                        panic!("Error: Unexpected RECURSIVEFINDCONTENT response: {other:?}");
-                    }
-                }
-            },
-            Err(err) => {
-                panic!("Error: Unable to get response from RECURSIVEFINDCONTENT request: {err:?}");
-            }
-        }
+    // test that a node will return a header via RECURSIVEFINDCONTENT that is stored locally
+    async fn test_recursive_find_content_header_block_1<'a> (client_a: Client, client_b: Client) {
+        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.json")
+            .expect("cannot find test asset");
+        let values: Value = serde_json::from_str(&values).unwrap();
+        let header_key: HistoryContentKey =
+            serde_json::from_value(values[0].get("content_key").unwrap().clone()).unwrap();
+        let header_value: HistoryContentValue =
+            serde_json::from_value(values[0].get("content_value").unwrap().clone()).unwrap();
+        test_recursive_find_content_x(client_a, client_b, (header_key, header_value), None).await;
     }
 }
 
 dyn_async! {
-    // test that a node will return a receipts via RECURSIVEFINDCONTENT over uTP that it has stored locally
-    async fn test_recursive_find_content_receipts_over_utp<'a> (client_a: Client, client_b: Client) {
-        let receipts_key: HistoryContentKey = serde_json::from_value(json!(RECEIPTS_KEY)).unwrap();
-        let receipts_value: HistoryContentValue = serde_json::from_value(json!(RECEIPTS_VALUE)).unwrap();
+    // test that a node will return a header via RECURSIVEFINDCONTENT that is stored locally
+    async fn test_recursive_find_content_header_block_100<'a> (client_a: Client, client_b: Client) {
+        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.json")
+            .expect("cannot find test asset");
+        let values: Value = serde_json::from_str(&values).unwrap();
+        let header_key: HistoryContentKey =
+            serde_json::from_value(values[2].get("content_key").unwrap().clone()).unwrap();
+        let header_value: HistoryContentValue =
+            serde_json::from_value(values[2].get("content_value").unwrap().clone()).unwrap();
+        test_recursive_find_content_x(client_a, client_b, (header_key, header_value), None).await;
+    }
+}
 
-        let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
-        let header_with_proof_value: HistoryContentValue = serde_json::from_value(json!(HEADER_WITH_PROOF_VALUE)).unwrap();
+dyn_async! {
+    // test that a node will return a header via RECURSIVEFINDCONTENT that is stored locally
+    async fn test_recursive_find_content_header_block_7000000<'a> (client_a: Client, client_b: Client) {
+        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.json")
+            .expect("cannot find test asset");
+        let values: Value = serde_json::from_str(&values).unwrap();
+        let header_key: HistoryContentKey =
+            serde_json::from_value(values[4].get("content_key").unwrap().clone()).unwrap();
+        let header_value: HistoryContentValue =
+            serde_json::from_value(values[4].get("content_value").unwrap().clone()).unwrap();
+        test_recursive_find_content_x(client_a, client_b, (header_key, header_value), None).await;
+    }
+}
 
-        match client_b.rpc.store(receipts_key.clone(), receipts_value.clone()).await {
-            Ok(result) => if !result {
-                panic!("Error storing receipts for recursive find content receipts over utp");
-            },
-            Err(err) => {
-                panic!("Error storing receipts: {err:?}");
+dyn_async! {
+    // test that a node will return a header via RECURSIVEFINDCONTENT that is stored locally
+    async fn test_recursive_find_content_header_block_15600000<'a> (client_a: Client, client_b: Client) {
+        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.json")
+            .expect("cannot find test asset");
+        let values: Value = serde_json::from_str(&values).unwrap();
+        let header_key: HistoryContentKey =
+            serde_json::from_value(values[7].get("content_key").unwrap().clone()).unwrap();
+        let header_value: HistoryContentValue =
+            serde_json::from_value(values[7].get("content_value").unwrap().clone()).unwrap();
+        test_recursive_find_content_x(client_a, client_b, (header_key, header_value), None).await;
+    }
+}
+
+dyn_async! {
+    // test that a node will return a header via RECURSIVEFINDCONTENT that is stored locally
+    async fn test_recursive_find_content_header_block_17510000<'a> (client_a: Client, client_b: Client) {
+        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.json")
+            .expect("cannot find test asset");
+        let values: Value = serde_json::from_str(&values).unwrap();
+        let header_key: HistoryContentKey =
+            serde_json::from_value(values[10].get("content_key").unwrap().clone()).unwrap();
+        let header_value: HistoryContentValue =
+            serde_json::from_value(values[10].get("content_value").unwrap().clone()).unwrap();
+        test_recursive_find_content_x(client_a, client_b, (header_key, header_value), None).await;
+    }
+}
+
+dyn_async! {
+    // test that a node will return a block body via RECURSIVEFINDCONTENT that is stored locally
+    async fn test_recursive_find_content_block_body_block_1<'a> (client_a: Client, client_b: Client) {
+        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.json")
+            .expect("cannot find test asset");
+        let values: Value = serde_json::from_str(&values).unwrap();
+        let header_key: HistoryContentKey =
+            serde_json::from_value(values[0].get("content_key").unwrap().clone()).unwrap();
+        let header_value: HistoryContentValue =
+            serde_json::from_value(values[0].get("content_value").unwrap().clone()).unwrap();
+        let content_key: HistoryContentKey =
+            serde_json::from_value(values[1].get("content_key").unwrap().clone()).unwrap();
+        let content_value: HistoryContentValue =
+            serde_json::from_value(values[1].get("content_value").unwrap().clone()).unwrap();
+        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
+    }
+}
+
+dyn_async! {
+    // test that a node will return a block body via RECURSIVEFINDCONTENT that is stored locally
+    async fn test_recursive_find_content_block_body_block_100<'a> (client_a: Client, client_b: Client) {
+        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.json")
+            .expect("cannot find test asset");
+        let values: Value = serde_json::from_str(&values).unwrap();
+        let header_key: HistoryContentKey =
+            serde_json::from_value(values[2].get("content_key").unwrap().clone()).unwrap();
+        let header_value: HistoryContentValue =
+            serde_json::from_value(values[2].get("content_value").unwrap().clone()).unwrap();
+        let content_key: HistoryContentKey =
+            serde_json::from_value(values[3].get("content_key").unwrap().clone()).unwrap();
+        let content_value: HistoryContentValue =
+            serde_json::from_value(values[3].get("content_value").unwrap().clone()).unwrap();
+        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
+    }
+}
+
+dyn_async! {
+    // test that a node will return a block body via RECURSIVEFINDCONTENT that is stored locally
+    async fn test_recursive_find_content_block_body_block_7000000<'a> (client_a: Client, client_b: Client) {
+        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.json")
+            .expect("cannot find test asset");
+        let values: Value = serde_json::from_str(&values).unwrap();
+        let header_key: HistoryContentKey =
+            serde_json::from_value(values[4].get("content_key").unwrap().clone()).unwrap();
+        let header_value: HistoryContentValue =
+            serde_json::from_value(values[4].get("content_value").unwrap().clone()).unwrap();
+        let content_key: HistoryContentKey =
+            serde_json::from_value(values[5].get("content_key").unwrap().clone()).unwrap();
+        let content_value: HistoryContentValue =
+            serde_json::from_value(values[5].get("content_value").unwrap().clone()).unwrap();
+        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
+    }
+}
+
+dyn_async! {
+    // test that a node will return a block body via RECURSIVEFINDCONTENT that is stored locally
+    async fn test_recursive_find_content_block_body_block_15600000<'a> (client_a: Client, client_b: Client) {
+        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.json")
+            .expect("cannot find test asset");
+        let values: Value = serde_json::from_str(&values).unwrap();
+        let header_key: HistoryContentKey =
+            serde_json::from_value(values[7].get("content_key").unwrap().clone()).unwrap();
+        let header_value: HistoryContentValue =
+            serde_json::from_value(values[7].get("content_value").unwrap().clone()).unwrap();
+        let content_key: HistoryContentKey =
+            serde_json::from_value(values[8].get("content_key").unwrap().clone()).unwrap();
+        let content_value: HistoryContentValue =
+            serde_json::from_value(values[8].get("content_value").unwrap().clone()).unwrap();
+        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
+    }
+}
+
+dyn_async! {
+    // test that a node will return a block body via RECURSIVEFINDCONTENT that is stored locally
+    async fn test_recursive_find_content_block_body_block_17510000<'a> (client_a: Client, client_b: Client) {
+        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.json")
+            .expect("cannot find test asset");
+        let values: Value = serde_json::from_str(&values).unwrap();
+        let header_key: HistoryContentKey =
+            serde_json::from_value(values[10].get("content_key").unwrap().clone()).unwrap();
+        let header_value: HistoryContentValue =
+            serde_json::from_value(values[10].get("content_value").unwrap().clone()).unwrap();
+        let content_key: HistoryContentKey =
+            serde_json::from_value(values[11].get("content_key").unwrap().clone()).unwrap();
+        let content_value: HistoryContentValue =
+            serde_json::from_value(values[11].get("content_value").unwrap().clone()).unwrap();
+        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
+    }
+}
+
+dyn_async! {
+    // test that a node will return a receipts via RECURSIVEFINDCONTENT that is stored locally
+    async fn test_recursive_find_content_receipts_block_7000000<'a> (client_a: Client, client_b: Client) {
+        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.json")
+            .expect("cannot find test asset");
+        let values: Value = serde_json::from_str(&values).unwrap();
+        let header_key: HistoryContentKey =
+            serde_json::from_value(values[4].get("content_key").unwrap().clone()).unwrap();
+        let header_value: HistoryContentValue =
+            serde_json::from_value(values[4].get("content_value").unwrap().clone()).unwrap();
+        let content_key: HistoryContentKey =
+            serde_json::from_value(values[6].get("content_key").unwrap().clone()).unwrap();
+        let content_value: HistoryContentValue =
+            serde_json::from_value(values[6].get("content_value").unwrap().clone()).unwrap();
+        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
+    }
+}
+
+dyn_async! {
+    // test that a node will return a receipts via RECURSIVEFINDCONTENT that is stored locally
+    async fn test_recursive_find_content_receipts_block_15600000<'a> (client_a: Client, client_b: Client) {
+        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.json")
+            .expect("cannot find test asset");
+        let values: Value = serde_json::from_str(&values).unwrap();
+        let header_key: HistoryContentKey =
+            serde_json::from_value(values[7].get("content_key").unwrap().clone()).unwrap();
+        let header_value: HistoryContentValue =
+            serde_json::from_value(values[7].get("content_value").unwrap().clone()).unwrap();
+        let content_key: HistoryContentKey =
+            serde_json::from_value(values[9].get("content_key").unwrap().clone()).unwrap();
+        let content_value: HistoryContentValue =
+            serde_json::from_value(values[9].get("content_value").unwrap().clone()).unwrap();
+        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
+    }
+}
+
+dyn_async! {
+    // test that a node will return a receipts via RECURSIVEFINDCONTENT that is stored locally
+    async fn test_recursive_find_content_receipts_block_17510000<'a> (client_a: Client, client_b: Client) {
+        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.json")
+            .expect("cannot find test asset");
+        let values: Value = serde_json::from_str(&values).unwrap();
+        let header_key: HistoryContentKey =
+            serde_json::from_value(values[10].get("content_key").unwrap().clone()).unwrap();
+        let header_value: HistoryContentValue =
+            serde_json::from_value(values[10].get("content_value").unwrap().clone()).unwrap();
+        let content_key: HistoryContentKey =
+            serde_json::from_value(values[12].get("content_key").unwrap().clone()).unwrap();
+        let content_value: HistoryContentValue =
+            serde_json::from_value(values[12].get("content_value").unwrap().clone()).unwrap();
+        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
+    }
+}
+
+dyn_async! {
+    // test that a node will return a content via RECURSIVEFINDCONTENT template that it has stored locally
+    async fn test_recursive_find_content_x<'a>(client_a: Client, client_b: Client, target_content: (HistoryContentKey, HistoryContentValue), optional_content: Option<(HistoryContentKey, HistoryContentValue)>) {
+        if let Some((optional_key, optional_value)) = optional_content {
+            match client_b.rpc.store(optional_key, optional_value).await {
+                Ok(result) => if !result {
+                    panic!("Unable to store optional content for recursive find content");
+                },
+                Err(err) => {
+                    panic!("Error storing optional content for recursive find content: {err:?}");
+                }
             }
         }
 
-        match client_b.rpc.store(header_with_proof_key.clone(), header_with_proof_value.clone()).await {
+        let (target_key, target_value) = target_content;
+        match client_b.rpc.store(target_key.clone(), target_value.clone()).await {
             Ok(result) => if !result {
-                panic!("Unable to store header with proof for recursive find content");
+                panic!("Error storing target content for recursive find content");
             },
             Err(err) => {
-                panic!("Error storing header with proof for recursive find content: {err:?}");
+                panic!("Error storing target content: {err:?}");
             }
         }
 
@@ -679,69 +948,20 @@ dyn_async! {
             Err(err) => panic!("{}", &err.to_string()),
         }
 
-        match client_a.rpc.recursive_find_content(receipts_key.clone()).await {
+        match client_a.rpc.recursive_find_content(target_key.clone()).await {
             Ok(result) => {
                 match result {
                     ContentInfo::Content{ content: ethportal_api::PossibleHistoryContentValue::ContentPresent(val), utp_transfer } => {
-                        if val != receipts_value {
-                            panic!("Error: Unexpected RECURSIVEFINDCONTENT response: didn't return expected receipt");
+                        if val != target_value {
+                            panic!("Error: Unexpected RECURSIVEFINDCONTENT response: didn't return expected target content");
                         }
 
-                        if !utp_transfer {
+                        if target_value.encode().len() < MAX_PORTAL_CONTENT_PAYLOAD_SIZE {
+                            if utp_transfer {
+                                panic!("Error: Unexpected RECURSIVEFINDCONTENT response: utp_transfer was supposed to be false");
+                            }
+                        } else if !utp_transfer {
                             panic!("Error: Unexpected RECURSIVEFINDCONTENT response: utp_transfer was supposed to be true");
-                        }
-                    },
-                    other => {
-                        panic!("Error: Unexpected RECURSIVEFINDCONTENT response: {other:?}");
-                    }
-                }
-            },
-            Err(err) => {
-                panic!("Error: Unable to get response from RECURSIVEFINDCONTENT request: {err:?}");
-            }
-        }
-    }
-}
-
-dyn_async! {
-    // test that a node will return a header via RECURSIVEFINDCONTENT that is stored locally and makes sure utp_transfer is false
-    async fn test_recursive_find_content_header<'a> (client_a: Client, client_b: Client) {
-        let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
-        let header_with_proof_value: HistoryContentValue = serde_json::from_value(json!(HEADER_WITH_PROOF_VALUE)).unwrap();
-
-        match client_b.rpc.store(header_with_proof_key.clone(), header_with_proof_value.clone()).await {
-            Ok(result) => if !result {
-                panic!("Unable to store header with proof for recursive find content");
-            },
-            Err(err) => {
-                panic!("Error storing header with proof for recursive find content: {err:?}");
-            }
-        }
-
-        let target_enr = match client_b.rpc.node_info().await {
-            Ok(node_info) => node_info.enr,
-            Err(err) => {
-                panic!("Error getting node info: {err:?}");
-            }
-        };
-
-        match HistoryNetworkApiClient::add_enr(&client_a.rpc, target_enr.clone()).await {
-            Ok(response) => if !response {
-                panic!("AddEnr expected to get true and instead got false")
-            },
-            Err(err) => panic!("{}", &err.to_string()),
-        }
-
-        match client_a.rpc.recursive_find_content(header_with_proof_key.clone()).await {
-            Ok(result) => {
-                match result {
-                    ContentInfo::Content{ content: ethportal_api::PossibleHistoryContentValue::ContentPresent(val), utp_transfer } => {
-                        if val != header_with_proof_value {
-                            panic!("Error: Unexpected RECURSIVEFINDCONTENT response: didn't return expected header with proof");
-                        }
-
-                        if utp_transfer {
-                            panic!("Error: Unexpected RECURSIVEFINDCONTENT response: utp_transfer was supposed to be false");
                         }
                     },
                     other => {

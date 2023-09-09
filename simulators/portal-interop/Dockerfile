@@ -27,6 +27,7 @@ RUN dpkg -i libssl1.1_1.1.0g-2ubuntu4_amd64.deb
 
 # copy build artifacts from build stage
 COPY --from=builder /portal-interop/target/release/portal-interop .
+COPY --from=builder /portal-interop/src/test-data ./test-data
 
 ENV RUST_LOG=debug
 
