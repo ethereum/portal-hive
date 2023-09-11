@@ -322,7 +322,7 @@ dyn_async! {
             // Test find content Header With Proof
             test.run(
                 TwoClientTestSpec {
-                    name: format!("FIND_CONTENT Header block 1 {} --> {}", client_a.name, client_b.name),
+                    name: format!("FindContent Block Header: block number 1 {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_header_block_1,
@@ -334,7 +334,7 @@ dyn_async! {
             // Test find content Header With Proof
             test.run(
                 TwoClientTestSpec {
-                    name: format!("FIND_CONTENT Header block 100 {} --> {}", client_a.name, client_b.name),
+                    name: format!("FindContent Block Header: block number 100 {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_header_block_100,
@@ -346,7 +346,7 @@ dyn_async! {
             // Test find content Header With Proof
             test.run(
                 TwoClientTestSpec {
-                    name: format!("FIND_CONTENT Header block 7000000 {} --> {}", client_a.name, client_b.name),
+                    name: format!("FindContent Block Header: block number 7000000 {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_header_block_7000000,
@@ -358,7 +358,7 @@ dyn_async! {
             // Test find content Header With Proof
             test.run(
                 TwoClientTestSpec {
-                    name: format!("FIND_CONTENT Header block 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
+                    name: format!("FindContent Block Header: block number 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_header_block_15600000,
@@ -370,7 +370,7 @@ dyn_async! {
             // Test find content Header With Proof
             test.run(
                 TwoClientTestSpec {
-                    name: format!("FIND_CONTENT Header block 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
+                    name: format!("FindContent Block Header: block number 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_header_block_17510000,
@@ -382,7 +382,7 @@ dyn_async! {
             // Test find content Header With Proof
             test.run(
                 TwoClientTestSpec {
-                    name: format!("FIND_CONTENT Block Body over uTP block 1 {} --> {}", client_a.name, client_b.name),
+                    name: format!("FindContent Block Body: block number 1 {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_block_body_block_1,
@@ -394,7 +394,7 @@ dyn_async! {
             // Test find content Header With Proof
             test.run(
                 TwoClientTestSpec {
-                    name: format!("FIND_CONTENT Block Body over uTP block 100 {} --> {}", client_a.name, client_b.name),
+                    name: format!("FindContent Block Body: block number 100 {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_block_body_block_100,
@@ -406,7 +406,7 @@ dyn_async! {
             // Test find content Header With Proof
             test.run(
                 TwoClientTestSpec {
-                    name: format!("FIND_CONTENT Block Body over uTP block 7000000 {} --> {}", client_a.name, client_b.name),
+                    name: format!("FindContent Block Body: block number 7000000 {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_block_body_block_7000000,
@@ -418,7 +418,7 @@ dyn_async! {
             // Test find content Header With Proof
             test.run(
                 TwoClientTestSpec {
-                    name: format!("FIND_CONTENT Block Body over uTP block 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
+                    name: format!("FindContent Block Body: block number 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_block_body_block_15600000,
@@ -430,7 +430,7 @@ dyn_async! {
             // Test find content Header With Proof
             test.run(
                 TwoClientTestSpec {
-                    name: format!("RECURSIVE_FIND_CONTENT Header block 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
+                    name: format!("FindContent Block Body: block number 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_block_body_block_17510000,
@@ -442,7 +442,7 @@ dyn_async! {
             // Test find content Header With Proof
             test.run(
                 TwoClientTestSpec {
-                    name: format!("FIND_CONTENT Receipts over uTP block 7000000 {} --> {}", client_a.name, client_b.name),
+                    name: format!("FindContent Receipts: block number 7000000 {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_receipts_block_7000000,
@@ -454,7 +454,7 @@ dyn_async! {
             // Test find content Header With Proof
             test.run(
                 TwoClientTestSpec {
-                    name: format!("FIND_CONTENT Receipts over uTP block 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
+                    name: format!("FindContent Receipts: block number 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_receipts_block_15600000,
@@ -466,7 +466,7 @@ dyn_async! {
             // Test find content Header With Proof
             test.run(
                 TwoClientTestSpec {
-                    name: format!("FIND_CONTENT Receipts over uTP block 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
+                    name: format!("FindContent Receipts: block number 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_receipts_block_17510000,
