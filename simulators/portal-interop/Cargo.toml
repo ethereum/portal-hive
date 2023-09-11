@@ -9,6 +9,7 @@ ethportal-api = { git = "https://github.com/ethereum/trin" }
 hivesim = { path = "../../hivesim-rs" }
 itertools = "0.10.5"
 serde_json = "1.0.87"
+serde_yaml = "0.9"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1.37"
 tracing-subscriber = "0.3.16"
