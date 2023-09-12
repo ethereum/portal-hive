@@ -560,6 +560,18 @@ dyn_async! {
                     client_b: client_b.clone(),
                 }
             ).await;
+
+            // Test gossiping a collection of blocks to node B (B will gossip back to A)
+            test.run(
+                TwoClientTestSpec {
+                    name: format!("GOSSIP blocks from A:{} --> B:{}", client_a.name, client_b.name),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_gossip_two_nodes,
+                    client_a: client_a.clone(),
+                    client_b: client_b.clone(),
+                }
+            ).await;
         }
    }
 }
@@ -1521,6 +1533,92 @@ dyn_async! {
             }
         } else {
             panic!("Distance calculation failed");
+        }
+    }
+}
+
+dyn_async! {
+    async fn test_gossip_two_nodes<'a> (client_a: Client, client_b: Client) {
+        // connect clients
+        let client_b_enr = match client_b.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                panic!("Error getting node info: {err:?}");
+            }
+        };
+        match HistoryNetworkApiClient::add_enr(&client_a.rpc, client_b_enr.clone()).await {
+            Ok(response) => match response {
+                true => (),
+                false => panic!("AddEnr expected to get true and instead got false")
+            },
+            Err(err) => panic!("{}", &err.to_string()),
+        }
+
+        // With default node settings nodes should be storing all content
+        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
+            .expect("cannot find test asset");
+        let values: Value = serde_yaml::from_str(&values).unwrap();
+
+        for value in values.as_sequence().unwrap() {
+            let content_key: HistoryContentKey =
+                serde_yaml::from_value(value.get("content_key").unwrap().clone()).unwrap();
+            let content_value: HistoryContentValue =
+                serde_yaml::from_value(value.get("content_value").unwrap().clone()).unwrap();
+
+            match client_a.rpc.gossip(content_key.clone(), content_value.clone()).await {
+                Ok(nodes_gossiped_to) => {
+                   if nodes_gossiped_to != 1 {
+                        panic!("We expected to gossip to 1 node instead we gossiped to: {nodes_gossiped_to}");
+                    }
+                }
+                Err(err) => {
+                    panic!("Unable to get received content: {err:?}");
+                }
+            }
+
+            if let HistoryContentKey::BlockHeaderWithProof(_) = content_key {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+        }
+
+        // wait 8 seconds for data to propagate
+        // This value is determined by how long the sleeps are in the gossip code
+        // So we may lower this or remove it depending on what we find.
+        tokio::time::sleep(Duration::from_secs(8)).await;
+
+        let comments = vec!["1 header", "1 block body", "100 header",
+            "100 block body", "7000000 header", "7000000 block body",
+            "7000000 receipt", "15600000 (post-merge) header", "15600000 (post-merge) block body", "15600000 (post-merge) receipt",
+            "17510000 (post-shanghai) header", "17510000 (post-shanghai) block body", "17510000 (post-shanghai) receipt"];
+
+        let mut result = vec![];
+        for (index, value) in values.as_sequence().unwrap().iter().enumerate() {
+            let content_key: HistoryContentKey =
+                serde_yaml::from_value(value.get("content_key").unwrap().clone()).unwrap();
+            let content_value: HistoryContentValue =
+                serde_yaml::from_value(value.get("content_value").unwrap().clone()).unwrap();
+
+            match client_b.rpc.local_content(content_key.clone()).await {
+                Ok(possible_content) => {
+                   match possible_content {
+                        PossibleHistoryContentValue::ContentPresent(content) => {
+                            if content != content_value {
+                                result.push(format!("Error content received for block {} was different then expected", comments[index]));
+                            }
+                        }
+                        PossibleHistoryContentValue::ContentAbsent => {
+                            result.push(format!("Error content for block {} was absent", comments[index]));
+                        }
+                    }
+                }
+                Err(err) => {
+                    panic!("Unable to get received content: {err:?}");
+                }
+            }
+        }
+
+        if !result.is_empty() {
+            panic!("Client B: {:?}", result);
         }
     }
 }
