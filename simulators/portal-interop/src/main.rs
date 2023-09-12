@@ -1439,37 +1439,34 @@ dyn_async! {
             "7000000 receipt", "15600000 (post-merge) header", "15600000 (post-merge) block body", "15600000 (post-merge) receipt",
             "17510000 (post-shanghai) header", "17510000 (post-shanghai) block body", "17510000 (post-shanghai) receipt"];
 
-        let mut results = vec![];
-        for client in &vec![client_a, client_b] {
-            let mut result = vec![];
-            for (index, value) in values.as_sequence().unwrap().iter().enumerate() {
-                let content_key: HistoryContentKey =
-                    serde_yaml::from_value(value.get("content_key").unwrap().clone()).unwrap();
-                let content_value: HistoryContentValue =
-                    serde_yaml::from_value(value.get("content_value").unwrap().clone()).unwrap();
+        let mut result = vec![];
+        for (index, value) in values.as_sequence().unwrap().iter().enumerate() {
+            let content_key: HistoryContentKey =
+                serde_yaml::from_value(value.get("content_key").unwrap().clone()).unwrap();
+            let content_value: HistoryContentValue =
+                serde_yaml::from_value(value.get("content_value").unwrap().clone()).unwrap();
 
-                match client.rpc.local_content(content_key.clone()).await {
-                    Ok(possible_content) => {
-                       match possible_content {
-                            PossibleHistoryContentValue::ContentPresent(content) => {
-                                if content != content_value {
-                                    result.push(format!("Error content received for block {} was different then expected", comments[index]));
-                                }
-                            }
-                            PossibleHistoryContentValue::ContentAbsent => {
-                                result.push(format!("Error content for block {} was absent", comments[index]));
+            match client_b.rpc.local_content(content_key.clone()).await {
+                Ok(possible_content) => {
+                   match possible_content {
+                        PossibleHistoryContentValue::ContentPresent(content) => {
+                            if content != content_value {
+                                result.push(format!("Error content received for block {} was different then expected", comments[index]));
                             }
                         }
-                    }
-                    Err(err) => {
-                        panic!("Unable to get received content: {err:?}");
+                        PossibleHistoryContentValue::ContentAbsent => {
+                            result.push(format!("Error content for block {} was absent", comments[index]));
+                        }
                     }
                 }
+                Err(err) => {
+                    panic!("Unable to get received content: {err:?}");
+                }
             }
-            results.push(result);
         }
-        if !results.is_empty() {
-            panic!("Client A: {:?} Client B: {:?}", results[0], results[1]);
+
+        if !result.is_empty() {
+            panic!("Client B: {:?}", result);
         }
     }
 }
