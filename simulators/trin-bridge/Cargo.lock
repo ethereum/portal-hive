@@ -3193,21 +3193,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "portal-bridge-tests"
-version = "0.1.0"
-dependencies = [
- "ethportal-api",
- "hivesim",
- "itertools",
- "portal-bridge",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "trin-validation",
-]
-
-[[package]]
 name = "portalnet"
 version = "0.1.0"
 source = "git+https://github.com/ethereum/trin#2a32224e3c2b0b80bc37c1b692c33016371f197a"
@@ -5056,6 +5041,21 @@ dependencies = [
  "darling",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "trin-bridge"
+version = "0.1.0"
+dependencies = [
+ "ethportal-api",
+ "hivesim",
+ "itertools",
+ "portal-bridge",
+ "serde_yaml",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "trin-validation",
 ]
 
 [[package]]
