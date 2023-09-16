@@ -1,17 +1,5 @@
-FROM node:18-alpine
+FROM ghcr.io/acolytec3/ultralight:latest
 
-RUN apk update && apk add --no-cache bash g++ make git python3 && rm -rf /var/cache/apk/*
-
-RUN git clone --depth 1 https://github.com/ethereumjs/ultralight.git 
-
-WORKDIR /ultralight
-
-RUN npm i --omit-dev
-
-COPY . .
-
-
-WORKDIR /
 COPY ultralight.sh /ultralight.sh
 RUN chmod +x /ultralight.sh
 
