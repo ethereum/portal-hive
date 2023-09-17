@@ -78,8 +78,6 @@ dyn_async! {
         let mode = BridgeMode::Test("./test-data/test_data_collection_of_forks_blocks.yaml".into());
         let pandaops_middleware = PandaOpsMiddleware::default();
         let execution_api = ExecutionApi::new(pandaops_middleware);
-        // Wait for bootnode to start
-        sleep(Duration::from_secs(1)).await;
 
         // connect clients
         let client_b_enr = match client_b.rpc.node_info().await {
@@ -105,10 +103,10 @@ dyn_async! {
         );
         bridge.launch().await;
 
-        // wait 32 seconds for data to propagate
+        // wait 2 seconds for data to propagate
         // This value is determined by how long the sleeps are in the bridge code
         // So we may lower this or remove it depending on what we find.
-        tokio::time::sleep(Duration::from_secs(32)).await;
+        tokio::time::sleep(Duration::from_secs(2)).await;
 
         // With default node settings nodes should be storing all content
         let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
