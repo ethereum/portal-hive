@@ -9,7 +9,7 @@ use portal_bridge::execution_api::ExecutionApi;
 use portal_bridge::mode::BridgeMode;
 use portal_bridge::pandaops::PandaOpsMiddleware;
 use serde_yaml::Value;
-use tokio::time::{sleep, Duration};
+use tokio::time::Duration;
 use trin_validation::accumulator::MasterAccumulator;
 use trin_validation::oracle::HeaderOracle;
 
