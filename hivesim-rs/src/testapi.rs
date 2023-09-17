@@ -199,7 +199,7 @@ async fn run_client_test(
     let cloned_host = host.clone();
     let test_result = extract_test_results(
         tokio::spawn(async move {
-            let mut test = &mut Test {
+            let test = &mut Test {
                 sim: cloned_host,
                 test_id,
                 suite: test.suite,
@@ -257,7 +257,7 @@ pub async fn run_test(
     // Register test on simulation server and initialize the T.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
 
-    let mut test = &mut Test {
+    let test = &mut Test {
         sim: host.clone(),
         test_id,
         suite: test.suite,
@@ -328,7 +328,7 @@ async fn run_two_client_test(
     let cloned_host = host.clone();
     let test_result = extract_test_results(
         tokio::spawn(async move {
-            let mut test = &mut Test {
+            let test = &mut Test {
                 sim: cloned_host,
                 test_id,
                 suite: test.suite,
@@ -405,7 +405,7 @@ async fn run_n_client_test(
     let cloned_host = host.clone();
     let test_result = extract_test_results(
         tokio::spawn(async move {
-            let mut test = &mut Test {
+            let test = &mut Test {
                 sim: cloned_host,
                 test_id,
                 suite: test.suite,
