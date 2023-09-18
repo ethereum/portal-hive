@@ -1,4 +1,4 @@
-FROM ghcr.io/acolytec3/ultralight:latest
+FROM ghcr.io/ethereumjs/ultralight:latest
 
 COPY ultralight.sh /ultralight.sh
 RUN chmod +x /ultralight.sh
