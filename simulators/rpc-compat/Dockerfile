@@ -1,4 +1,4 @@
-FROM rust:1.68.2 AS builder
+FROM rust:1.71.1 AS builder
 
 # create a new empty shell project
 RUN USER=root cargo new --bin rpc-compat
