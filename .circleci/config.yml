@@ -57,9 +57,24 @@ jobs:
         - run:
             name: "Lint, build, test Rust simulators"
             command: ".circleci/rust-simulators.sh"
+  build-simulator-dockerfile:
+    docker:
+      - image: cimg/base:2022.06
+    parallelism: 5
+    steps:
+      - setup_remote_docker:
+          version: 20.10.14
+      - checkout
+      - run:
+          name: "Build dockerfile for simulator"
+          command: |
+            SimDockerfile=$(circleci tests glob "simulators/*/Dockerfile" | circleci tests split --split-by=timings)
+            echo "test variable value $SimDockerfile"
+            docker build -f $SimDockerfile .
 workflows:
   main:
     jobs:
       - go-test
       - build
       - rust-simulators
+      - build-simulator-dockerfile
