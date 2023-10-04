@@ -1,4 +1,5 @@
 use ethportal_api::jsonrpsee::core::__reexports::serde_json;
+use ethportal_api::types::distance::{Metric, XorMetric};
 use ethportal_api::types::portal::ContentInfo;
 use ethportal_api::{
     Discv5ApiClient, HistoryContentKey, HistoryContentValue, HistoryNetworkApiClient,
@@ -77,6 +78,17 @@ dyn_async! {
                     always_run: false,
                     run: test_find_content_two_jumps,
                     private_keys: Some(vec![None, Some(private_key_1.clone()), Some(private_key_2.clone())]),
+                    clients: vec![client_a.clone(), client_b.clone(), client_c.clone()],
+                }
+            ).await;
+
+            // Test find nodes distance of client a
+            test.run(NClientTestSpec {
+                    name: format!("FIND_NODES distance of client C {} --> {} --> {}", client_a.name, client_b.name, client_c.name),
+                    description: "find nodes: distance of client A expect seeded enr returned".to_string(),
+                    always_run: false,
+                    run: test_find_nodes_distance_of_client_c,
+                    private_keys: None,
                     clients: vec![client_a.clone(), client_b.clone(), client_c.clone()],
                 }
             ).await;
@@ -175,6 +187,57 @@ dyn_async! {
             Err(err) => {
                 panic!("Error: Unable to get response from FINDCONTENT request: {err:?}");
             }
+        }
+    }
+}
+
+dyn_async! {
+    async fn test_find_nodes_distance_of_client_c<'a>(clients: Vec<Client>) {
+        let (client_a, client_b, client_c) = match clients.iter().collect_tuple() {
+            Some((client_a, client_b, client_c)) => (client_a, client_b, client_c),
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
+
+        let target_enr = match client_b.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                panic!("Error getting node info: {err:?}");
+            }
+        };
+
+        // We are adding client C to our list so we then can assume only one client per bucket
+        let client_c_enr = match client_c.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                panic!("Error getting node info: {err:?}");
+            }
+        };
+
+        // seed enr into routing table
+        match HistoryNetworkApiClient::add_enr(&client_b.rpc, client_c_enr.clone()).await {
+            Ok(response) => if !response {
+                panic!("AddEnr expected to get true and instead got false")
+            },
+            Err(err) => panic!("{}", &err.to_string()),
+        }
+
+        if let Some(distance) = XorMetric::distance(&target_enr.node_id().raw(), &client_c_enr.node_id().raw()).log2() {
+            match client_a.rpc.find_nodes(target_enr.clone(), vec![distance as u16]).await {
+                Ok(response) => {
+                    if response.is_empty() {
+                        panic!("FindNodes expected to have received a non-empty response");
+                    }
+
+                    if !response.contains(&client_c_enr) {
+                        panic!("FindNodes {distance} distance expected to contained seeded Enr");
+                    }
+                }
+                Err(err) => panic!("{}", &err.to_string()),
+            }
+        } else {
+            panic!("Distance calculation failed");
         }
     }
 }
