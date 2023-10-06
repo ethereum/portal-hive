@@ -69,7 +69,7 @@ jobs:
           name: "Build dockerfile for simulator"
           command: |
             SimDockerfile=$(circleci tests glob "simulators/*/Dockerfile" | circleci tests split --split-by=timings)
-            echo "test variable value $SimDockerfile"
+            echo "Building Docker file: $SimDockerfile"
             docker build -f $SimDockerfile .
 workflows:
   main:
