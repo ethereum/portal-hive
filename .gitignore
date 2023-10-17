@@ -5,7 +5,9 @@ workspace
 /hive
 
 # don't include target files
+hivesim-rs/Cargo.lock
 hivesim-rs/target
+simulators/*/Cargo.lock
 simulators/*/target
 node_modules/
 dist/

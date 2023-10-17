@@ -5,7 +5,6 @@ RUN USER=root cargo new --bin portal-interop
 WORKDIR /portal-interop
 
 # copy over manifests and source to build image
-COPY ./simulators/portal-interop/Cargo.lock ./Cargo.lock
 COPY ./simulators/portal-interop/Cargo.toml ./Cargo.toml
 COPY ./simulators/portal-interop/src ./src
 COPY ./hivesim-rs ./../../hivesim-rs

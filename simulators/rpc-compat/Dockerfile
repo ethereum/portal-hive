@@ -5,7 +5,6 @@ RUN USER=root cargo new --bin rpc-compat
 WORKDIR /rpc-compat
 
 # copy over manifests and source to build image
-COPY ./simulators/rpc-compat/Cargo.lock ./Cargo.lock
 COPY ./simulators/rpc-compat/Cargo.toml ./Cargo.toml
 COPY ./simulators/rpc-compat/src ./src
 COPY ./hivesim-rs ./../../hivesim-rs
