@@ -131,17 +131,15 @@ impl Simulation {
         test_suite: SuiteID,
         test: TestID,
         client_type: String,
-        private_key: Option<String>,
+        environment: Option<HashMap<String, String>>,
     ) -> (String, IpAddr) {
         let url = format!("{}/testsuite/{}/test/{}/node", self.url, test_suite, test);
         let client = reqwest::Client::new();
 
         let mut config = SimulatorConfig::new();
         config.client = client_type;
-        if let Some(private_key) = private_key {
-            config
-                .environment
-                .insert("HIVE_CLIENT_PRIVATE_KEY".to_string(), private_key);
+        if let Some(environment) = environment {
+            config.environment = environment;
         }
 
         let config = serde_json::to_string(&config).expect("Failed to parse config to serde_json");

@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use core::fmt::Debug;
 use dyn_clone::DynClone;
 use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
+use std::collections::HashMap;
 use std::net::IpAddr;
 
 use crate::utils::{client_test_name, extract_test_results};
@@ -43,6 +44,7 @@ pub type AsyncTwoClientsTestFunc = fn(
 
 pub type AsyncNClientsTestFunc = fn(
     Vec<Client>,
+    Option<Vec<(String, String)>>,
 ) -> Pin<
     Box<
         dyn Future<Output = ()> // future API / pollable
@@ -107,14 +109,18 @@ pub struct Test {
 }
 
 impl Test {
-    pub async fn start_client(&self, client_type: String, private_key: Option<String>) -> Client {
+    pub async fn start_client(
+        &self,
+        client_type: String,
+        environment: Option<HashMap<String, String>>,
+    ) -> Client {
         let (container, ip) = self
             .sim
             .start_client(
                 self.suite_id,
                 self.test_id,
                 client_type.clone(),
-                private_key,
+                environment,
             )
             .await;
 
@@ -360,11 +366,11 @@ pub struct NClientTestSpec {
     pub always_run: bool,
     // The Run function is invoked when the test executes.
     pub run: AsyncNClientsTestFunc,
-    // length of private key array should match clients array
-    // this attribute is optional and is used for tests which need node_ids relative to the
-    // content within the test
-    pub private_keys: Option<Vec<Option<String>>>,
+    // a hashmap of Hive Environment Variables
+    pub environment: Option<Vec<Option<HashMap<String, String>>>>,
+    pub test_data: Option<Vec<(String, String)>>,
     pub clients: Vec<ClientDefinition>,
+    // test data which can be passed to the test
 }
 
 #[async_trait]
@@ -381,7 +387,8 @@ impl Testable for NClientTestSpec {
         run_n_client_test(
             simulation,
             test_run,
-            self.private_keys.to_owned(),
+            self.test_data.to_owned(),
+            self.environment.to_owned(),
             self.clients.to_owned(),
             self.run,
         )
@@ -393,7 +400,8 @@ impl Testable for NClientTestSpec {
 async fn run_n_client_test(
     host: Simulation,
     test: TestRun,
-    private_keys: Option<Vec<Option<String>>>,
+    test_data: Option<Vec<(String, String)>>,
+    environment: Option<Vec<Option<HashMap<String, String>>>>,
     clients: Vec<ClientDefinition>,
     func: AsyncNClientsTestFunc,
 ) {
@@ -417,14 +425,17 @@ async fn run_n_client_test(
 
             let mut client_vec: Vec<Client> = Vec::new();
             for (index, client) in clients.into_iter().enumerate() {
-                let private_key = if let Some(private_keys) = private_keys.clone() {
-                    private_keys[index].to_owned()
+                let environment_variable = if let Some(environment_variable) = environment.clone() {
+                    environment_variable[index].to_owned()
                 } else {
                     None
                 };
-                client_vec.push(test.start_client(client.name.to_owned(), private_key).await);
+                client_vec.push(
+                    test.start_client(client.name.to_owned(), environment_variable)
+                        .await,
+                );
             }
-            (func)(client_vec).await;
+            (func)(client_vec, test_data).await;
         })
         .await,
     );
