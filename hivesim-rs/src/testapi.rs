@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use core::fmt::Debug;
 use dyn_clone::DynClone;
 use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
+use std::collections::HashMap;
 use std::net::IpAddr;
 
 use crate::utils::{client_test_name, extract_test_results};
@@ -107,14 +108,18 @@ pub struct Test {
 }
 
 impl Test {
-    pub async fn start_client(&self, client_type: String, private_key: Option<String>) -> Client {
+    pub async fn start_client(
+        &self,
+        client_type: String,
+        environment: Option<HashMap<String, String>>,
+    ) -> Client {
         let (container, ip) = self
             .sim
             .start_client(
                 self.suite_id,
                 self.test_id,
                 client_type.clone(),
-                private_key,
+                environment,
             )
             .await;
 
@@ -350,20 +355,19 @@ async fn run_two_client_test(
 
 #[derive(Clone)]
 pub struct NClientTestSpec {
-    // These fields are displayed in the UI. Be sure to add
-    // a meaningful description here.
+    /// These fields are displayed in the UI. Be sure to add
+    /// a meaningful description here.
     pub name: String,
     pub description: String,
-    // If AlwaysRun is true, the test will run even if Name does not match the test
-    // pattern. This option is useful for tests that launch a client instance and
-    // then perform further tests against it.
+    /// If AlwaysRun is true, the test will run even if Name does not match the test
+    /// pattern. This option is useful for tests that launch a client instance and
+    /// then perform further tests against it.
     pub always_run: bool,
-    // The Run function is invoked when the test executes.
+    /// The Run function is invoked when the test executes.
     pub run: AsyncNClientsTestFunc,
-    // length of private key array should match clients array
-    // this attribute is optional and is used for tests which need node_ids relative to the
-    // content within the test
-    pub private_keys: Option<Vec<Option<String>>>,
+    /// For each client, there is a distinct map of Hive Environment Variable names to values.
+    /// The environments must be in the same order as the `clients`
+    pub environments: Option<Vec<Option<HashMap<String, String>>>>,
     pub clients: Vec<ClientDefinition>,
 }
 
@@ -381,7 +385,7 @@ impl Testable for NClientTestSpec {
         run_n_client_test(
             simulation,
             test_run,
-            self.private_keys.to_owned(),
+            self.environments.to_owned(),
             self.clients.to_owned(),
             self.run,
         )
@@ -393,7 +397,7 @@ impl Testable for NClientTestSpec {
 async fn run_n_client_test(
     host: Simulation,
     test: TestRun,
-    private_keys: Option<Vec<Option<String>>>,
+    environments: Option<Vec<Option<HashMap<String, String>>>>,
     clients: Vec<ClientDefinition>,
     func: AsyncNClientsTestFunc,
 ) {
@@ -416,13 +420,9 @@ async fn run_n_client_test(
             test.result.pass = true;
 
             let mut client_vec: Vec<Client> = Vec::new();
-            for (index, client) in clients.into_iter().enumerate() {
-                let private_key = if let Some(private_keys) = private_keys.clone() {
-                    private_keys[index].to_owned()
-                } else {
-                    None
-                };
-                client_vec.push(test.start_client(client.name.to_owned(), private_key).await);
+            let env_iter = environments.unwrap_or(vec![None; clients.len()]);
+            for (client, environment) in clients.into_iter().zip(env_iter) {
+                client_vec.push(test.start_client(client.name.to_owned(), environment).await);
             }
             (func)(client_vec).await;
         })
