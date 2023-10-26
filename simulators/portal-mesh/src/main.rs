@@ -69,7 +69,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_two_jumps,
-                    environment: Some(vec![None, Some(HashMap::from([(PRIVATE_KEY_ENVIRONMENT_VARIABLE.to_string(), private_key_2.clone())])), Some(HashMap::from([(PRIVATE_KEY_ENVIRONMENT_VARIABLE.to_string(), private_key_1.clone())]))]),
+                    environments: Some(vec![None, Some(HashMap::from([(PRIVATE_KEY_ENVIRONMENT_VARIABLE.to_string(), private_key_2.clone())])), Some(HashMap::from([(PRIVATE_KEY_ENVIRONMENT_VARIABLE.to_string(), private_key_1.clone())]))]),
                     clients: vec![client_a.clone(), client_b.clone(), client_c.clone()],
                 }
             ).await;
@@ -81,7 +81,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_two_jumps,
-                    environment: Some(vec![None, Some(HashMap::from([(PRIVATE_KEY_ENVIRONMENT_VARIABLE.to_string(), private_key_1.clone())])), Some(HashMap::from([(PRIVATE_KEY_ENVIRONMENT_VARIABLE.to_string(), private_key_2.clone())]))]),
+                    environments: Some(vec![None, Some(HashMap::from([(PRIVATE_KEY_ENVIRONMENT_VARIABLE.to_string(), private_key_1.clone())])), Some(HashMap::from([(PRIVATE_KEY_ENVIRONMENT_VARIABLE.to_string(), private_key_2.clone())]))]),
                     clients: vec![client_a.clone(), client_b.clone(), client_c.clone()],
                 }
             ).await;
@@ -92,7 +92,7 @@ dyn_async! {
                     description: "find nodes: distance of client A expect seeded enr returned".to_string(),
                     always_run: false,
                     run: test_find_nodes_distance_of_client_c,
-                    environment: None,
+                    environments: None,
                     clients: vec![client_a.clone(), client_b.clone(), client_c.clone()],
                 }
             ).await;

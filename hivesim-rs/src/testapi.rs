@@ -355,18 +355,19 @@ async fn run_two_client_test(
 
 #[derive(Clone)]
 pub struct NClientTestSpec {
-    // These fields are displayed in the UI. Be sure to add
-    // a meaningful description here.
+    /// These fields are displayed in the UI. Be sure to add
+    /// a meaningful description here.
     pub name: String,
     pub description: String,
-    // If AlwaysRun is true, the test will run even if Name does not match the test
-    // pattern. This option is useful for tests that launch a client instance and
-    // then perform further tests against it.
+    /// If AlwaysRun is true, the test will run even if Name does not match the test
+    /// pattern. This option is useful for tests that launch a client instance and
+    /// then perform further tests against it.
     pub always_run: bool,
-    // The Run function is invoked when the test executes.
+    /// The Run function is invoked when the test executes.
     pub run: AsyncNClientsTestFunc,
-    // a hashmap of Hive Environment Variables
-    pub environment: Option<Vec<Option<HashMap<String, String>>>>,
+    /// For each client, there is a distinct map of Hive Environment Variable names to values.
+    /// The environments must be in the same order as the `clients`
+    pub environments: Option<Vec<Option<HashMap<String, String>>>>,
     pub clients: Vec<ClientDefinition>,
 }
 
@@ -384,7 +385,7 @@ impl Testable for NClientTestSpec {
         run_n_client_test(
             simulation,
             test_run,
-            self.environment.to_owned(),
+            self.environments.to_owned(),
             self.clients.to_owned(),
             self.run,
         )
@@ -396,7 +397,7 @@ impl Testable for NClientTestSpec {
 async fn run_n_client_test(
     host: Simulation,
     test: TestRun,
-    environment: Option<Vec<Option<HashMap<String, String>>>>,
+    environments: Option<Vec<Option<HashMap<String, String>>>>,
     clients: Vec<ClientDefinition>,
     func: AsyncNClientsTestFunc,
 ) {
@@ -419,16 +420,9 @@ async fn run_n_client_test(
             test.result.pass = true;
 
             let mut client_vec: Vec<Client> = Vec::new();
-            for (index, client) in clients.into_iter().enumerate() {
-                let environment_variable = if let Some(environment_variable) = environment.clone() {
-                    environment_variable[index].to_owned()
-                } else {
-                    None
-                };
-                client_vec.push(
-                    test.start_client(client.name.to_owned(), environment_variable)
-                        .await,
-                );
+            let env_iter = environments.unwrap_or(vec![None; clients.len()]);
+            for (client, environment) in clients.into_iter().zip(env_iter) {
+                client_vec.push(test.start_client(client.name.to_owned(), environment).await);
             }
             (func)(client_vec).await;
         })
