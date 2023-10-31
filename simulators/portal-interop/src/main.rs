@@ -1,3 +1,10 @@
+mod constants;
+
+use crate::constants::{
+    BERLIN_BLOCK_NUMBER, BYZANTIUM_BLOCK_NUMBER, CONSTANTINOPLE_BLOCK_NUMBER,
+    HOMESTEAD_BLOCK_NUMBER, ISTANBUL_BLOCK_NUMBER, LONDON_BLOCK_NUMBER, MERGE_BLOCK_NUMBER,
+    SHANGHAI_BLOCK_NUMBER, TEST_DATA_FILE_PATH,
+};
 use ethportal_api::types::portal::ContentInfo;
 use ethportal_api::utils::bytes::hex_encode;
 use ethportal_api::{
@@ -123,21 +130,21 @@ fn process_content(
 }
 
 fn get_flair(block_number: u64) -> String {
-    if block_number > 17034870 {
+    if block_number > SHANGHAI_BLOCK_NUMBER {
         " (post-shanghai)".to_string()
-    } else if block_number > 15537394 {
+    } else if block_number > MERGE_BLOCK_NUMBER {
         " (post-merge)".to_string()
-    } else if block_number > 12965000 {
+    } else if block_number > LONDON_BLOCK_NUMBER {
         " (post-london)".to_string()
-    } else if block_number > 12244000 {
+    } else if block_number > BERLIN_BLOCK_NUMBER {
         " (post-berlin)".to_string()
-    } else if block_number > 9069000 {
+    } else if block_number > ISTANBUL_BLOCK_NUMBER {
         " (post-istanbul)".to_string()
-    } else if block_number > 7280000 {
+    } else if block_number > CONSTANTINOPLE_BLOCK_NUMBER {
         " (post-constantinople)".to_string()
-    } else if block_number > 4370000 {
+    } else if block_number > BYZANTIUM_BLOCK_NUMBER {
         " (post-byzantium)".to_string()
-    } else if block_number > 1150000 {
+    } else if block_number > HOMESTEAD_BLOCK_NUMBER {
         " (post-homestead)".to_string()
     } else {
         "".to_string()
@@ -149,7 +156,7 @@ dyn_async! {
         // Get all available portal clients
         let clients = test.sim.client_types().await;
 
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
+        let values = std::fs::read_to_string(TEST_DATA_FILE_PATH)
             .expect("cannot find test asset");
         let values: Value = serde_yaml::from_str(&values).unwrap();
         let content: Vec<(HistoryContentKey, HistoryContentValue)> = values.as_sequence().unwrap().iter().map(|value| {
@@ -168,7 +175,31 @@ dyn_async! {
                         name: format!("OFFER {}: block number {}{} {} --> {}", content_type, block_number, get_flair(block_number), client_a.name, client_b.name),
                         description: "".to_string(),
                         always_run: false,
-                        run: test_offer_x,
+                        run: test_offer,
+                        environments: None,
+                        test_data: Some(test_data.clone()),
+                        clients: vec![client_a.clone(), client_b.clone()],
+                    }
+                ).await;
+
+                test.run(
+                    NClientTestSpec {
+                        name: format!("RecursiveFindContent {}: block number {}{} {} --> {}", content_type, block_number, get_flair(block_number), client_a.name, client_b.name),
+                        description: "".to_string(),
+                        always_run: false,
+                        run: test_recursive_find_content,
+                        environments: None,
+                        test_data: Some(test_data.clone()),
+                        clients: vec![client_a.clone(), client_b.clone()],
+                    }
+                ).await;
+
+                test.run(
+                    NClientTestSpec {
+                        name: format!("FindContent {}: block number {}{} {} --> {}", content_type, block_number, get_flair(block_number), client_a.name, client_b.name),
+                        description: "".to_string(),
+                        always_run: false,
+                        run: test_find_content,
                         environments: None,
                         test_data: Some(test_data),
                         clients: vec![client_a.clone(), client_b.clone()],
@@ -208,34 +239,6 @@ dyn_async! {
                     client_b: client_b.clone(),
                 }
             ).await;
-
-            for ProcessedContent { content_type, block_number, test_data } in process_content(content.clone()) {
-                test.run(
-                    NClientTestSpec {
-                        name: format!("RecursiveFindContent {}: block number {}{} {} --> {}", content_type, block_number, get_flair(block_number), client_a.name, client_b.name),
-                        description: "".to_string(),
-                        always_run: false,
-                        run: test_recursive_find_content_x,
-                        environments: None,
-                        test_data: Some(test_data),
-                        clients: vec![client_a.clone(), client_b.clone()],
-                    }
-                ).await;
-            }
-
-            for ProcessedContent { content_type, block_number, test_data } in process_content(content.clone()) {
-                test.run(
-                    NClientTestSpec {
-                        name: format!("FindContent {}: block number {}{} {} --> {}", content_type, block_number, get_flair(block_number), client_a.name, client_b.name),
-                        description: "".to_string(),
-                        always_run: false,
-                        run: test_find_content_x,
-                        environments: None,
-                        test_data: Some(test_data),
-                        clients: vec![client_a.clone(), client_b.clone()],
-                    }
-                ).await;
-            }
 
             // Test gossiping a collection of blocks to node B (B will gossip back to A)
             test.run(
@@ -291,7 +294,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_offer_x<'a>(clients: Vec<Client>, test_data: Option<Vec<(String, String)>>) {
+    async fn test_offer<'a>(clients: Vec<Client>, test_data: Option<Vec<(String, String)>>) {
         let (client_a, client_b) = match clients.iter().collect_tuple() {
             Some((client_a, client_b)) => (client_a, client_b),
             None => {
@@ -427,7 +430,7 @@ dyn_async! {
 
 dyn_async! {
     // test that a node will return a content via RECURSIVEFINDCONTENT template that it has stored locally
-    async fn test_recursive_find_content_x<'a>(clients: Vec<Client>, test_data: Option<Vec<(String, String)>>) {
+    async fn test_recursive_find_content<'a>(clients: Vec<Client>, test_data: Option<Vec<(String, String)>>) {
         let (client_a, client_b) = match clients.iter().collect_tuple() {
             Some((client_a, client_b)) => (client_a, client_b),
             None => {
@@ -512,7 +515,7 @@ dyn_async! {
 
 dyn_async! {
     // test that a node will return a x content via FINDCONTENT that it has stored locally
-    async fn test_find_content_x<'a> (clients: Vec<Client>, test_data: Option<Vec<(String, String)>>) {
+    async fn test_find_content<'a> (clients: Vec<Client>, test_data: Option<Vec<(String, String)>>) {
         let (client_a, client_b) = match clients.iter().collect_tuple() {
             Some((client_a, client_b)) => (client_a, client_b),
             None => {
@@ -521,7 +524,7 @@ dyn_async! {
         };
         let test_data = match test_data {
             Some(test_data) => test_data,
-            None => panic!("Expected test data non was provided"),
+            None => panic!("Expected test data none was provided"),
         };
         if let Some((optional_key, optional_value)) = test_data.get(1) {
             let optional_key: HistoryContentKey =
