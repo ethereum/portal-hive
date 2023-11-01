@@ -71,6 +71,7 @@ fn content_pair_to_string_pair(
     (content_key.to_hex(), hex_encode(content_value.encode()))
 }
 
+/// Processed content data for history tests
 struct ProcessedContent {
     content_type: String,
     block_number: u64,
