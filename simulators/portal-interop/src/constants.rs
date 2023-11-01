@@ -8,9 +8,6 @@ pub const CONSTANTINOPLE_BLOCK_NUMBER: u64 = 7280000;
 pub const BYZANTIUM_BLOCK_NUMBER: u64 = 4370000;
 pub const HOMESTEAD_BLOCK_NUMBER: u64 = 1150000;
 
-// Tests will be automatically generated from the data in this file.
-// Test data is written in a yaml key/value format
-// For history tests, the header MUST be placed before its respective block body/receipt, to ensure that the data necessary for validation is available.
 // TESTS THAT USE THIS FILE
 // Tests that are generated from permutations of the data
 // "OFFER {}: block number {}{} {} --> {}"
