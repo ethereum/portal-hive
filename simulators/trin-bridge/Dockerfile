@@ -7,7 +7,6 @@ WORKDIR /trin-bridge
 RUN apt-get update && apt-get install clang -y
 
 # copy over manifests and source to build image
-COPY ./simulators/trin-bridge/Cargo.lock ./Cargo.lock
 COPY ./simulators/trin-bridge/Cargo.toml ./Cargo.toml
 COPY ./simulators/trin-bridge/src ./src
 COPY ./hivesim-rs ./../../hivesim-rs
