@@ -11,4 +11,11 @@ pub const HOMESTEAD_BLOCK_NUMBER: u64 = 1150000;
 // Tests will be automatically generated from the data in this file.
 // Test data is written in a yaml key/value format
 // For history tests, the header MUST be placed before its respective block body/receipt, to ensure that the data necessary for validation is available.
+// TESTS THAT USE THIS FILE
+// Tests that are generated from permutations of the data
+// "OFFER {}: block number {}{} {} --> {}"
+// "RecursiveFindContent {}: block number {}{} {} --> {}"
+// "FindContent {}: block number {}{} {} --> {}"
+// Tests that use the data itself
+// "GOSSIP blocks from A:{} --> B:{}"
 pub const TEST_DATA_FILE_PATH: &str = "./test-data/test_data_collection_of_forks_blocks.yaml";
