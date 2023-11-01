@@ -1,6 +1,13 @@
 # Test data for Portal Hive
 # Data is formatted by comment of block height, header, block body, and receipt, expect for blocks 1 and 100 which don't have receipts
 # For history tests, the header MUST be placed before its respective block body/receipt, to ensure that the data necessary for validation is available.
+# TESTS THAT USE THIS FILE
+# Tests that are generated from permutations of the data
+# "OFFER {}: block number {}{} {} --> {}"
+# "RecursiveFindContent {}: block number {}{} {} --> {}"
+# "FindContent {}: block number {}{} {} --> {}"
+# Tests that use the data itself
+# "GOSSIP blocks from A:{} --> B:{}"
 
 # Block number: 1
 - content_key: "0x0088e96d4537bea4d9c05d12549907b32561d3bf31f45aae734cdc119f13406cb6"

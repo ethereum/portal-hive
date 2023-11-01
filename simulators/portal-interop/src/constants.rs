@@ -8,11 +8,4 @@ pub const CONSTANTINOPLE_BLOCK_NUMBER: u64 = 7280000;
 pub const BYZANTIUM_BLOCK_NUMBER: u64 = 4370000;
 pub const HOMESTEAD_BLOCK_NUMBER: u64 = 1150000;
 
-// TESTS THAT USE THIS FILE
-// Tests that are generated from permutations of the data
-// "OFFER {}: block number {}{} {} --> {}"
-// "RecursiveFindContent {}: block number {}{} {} --> {}"
-// "FindContent {}: block number {}{} {} --> {}"
-// Tests that use the data itself
-// "GOSSIP blocks from A:{} --> B:{}"
 pub const TEST_DATA_FILE_PATH: &str = "./test-data/test_data_collection_of_forks_blocks.yaml";
