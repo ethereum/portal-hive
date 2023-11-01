@@ -44,6 +44,7 @@ pub type AsyncTwoClientsTestFunc = fn(
 
 pub type AsyncNClientsTestFunc = fn(
     Vec<Client>,
+    Option<Vec<(String, String)>>,
 ) -> Pin<
     Box<
         dyn Future<Output = ()> // future API / pollable
@@ -368,6 +369,8 @@ pub struct NClientTestSpec {
     /// For each client, there is a distinct map of Hive Environment Variable names to values.
     /// The environments must be in the same order as the `clients`
     pub environments: Option<Vec<Option<HashMap<String, String>>>>,
+    /// test data which can be passed to the test
+    pub test_data: Option<Vec<(String, String)>>,
     pub clients: Vec<ClientDefinition>,
 }
 
@@ -386,6 +389,7 @@ impl Testable for NClientTestSpec {
             simulation,
             test_run,
             self.environments.to_owned(),
+            self.test_data.to_owned(),
             self.clients.to_owned(),
             self.run,
         )
@@ -398,6 +402,7 @@ async fn run_n_client_test(
     host: Simulation,
     test: TestRun,
     environments: Option<Vec<Option<HashMap<String, String>>>>,
+    test_data: Option<Vec<(String, String)>>,
     clients: Vec<ClientDefinition>,
     func: AsyncNClientsTestFunc,
 ) {
@@ -424,7 +429,7 @@ async fn run_n_client_test(
             for (client, environment) in clients.into_iter().zip(env_iter) {
                 client_vec.push(test.start_client(client.name.to_owned(), environment).await);
             }
-            (func)(client_vec).await;
+            (func)(client_vec, test_data).await;
         })
         .await,
     );

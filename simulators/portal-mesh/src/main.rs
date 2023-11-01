@@ -70,6 +70,7 @@ dyn_async! {
                     always_run: false,
                     run: test_find_content_two_jumps,
                     environments: Some(vec![None, Some(HashMap::from([(PRIVATE_KEY_ENVIRONMENT_VARIABLE.to_string(), private_key_2.clone())])), Some(HashMap::from([(PRIVATE_KEY_ENVIRONMENT_VARIABLE.to_string(), private_key_1.clone())]))]),
+                    test_data: None,
                     clients: vec![client_a.clone(), client_b.clone(), client_c.clone()],
                 }
             ).await;
@@ -82,6 +83,7 @@ dyn_async! {
                     always_run: false,
                     run: test_find_content_two_jumps,
                     environments: Some(vec![None, Some(HashMap::from([(PRIVATE_KEY_ENVIRONMENT_VARIABLE.to_string(), private_key_1.clone())])), Some(HashMap::from([(PRIVATE_KEY_ENVIRONMENT_VARIABLE.to_string(), private_key_2.clone())]))]),
+                    test_data: None,
                     clients: vec![client_a.clone(), client_b.clone(), client_c.clone()],
                 }
             ).await;
@@ -93,6 +95,7 @@ dyn_async! {
                     always_run: false,
                     run: test_find_nodes_distance_of_client_c,
                     environments: None,
+                    test_data: None,
                     clients: vec![client_a.clone(), client_b.clone(), client_c.clone()],
                 }
             ).await;
@@ -101,7 +104,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_find_content_two_jumps<'a> (clients: Vec<Client>) {
+    async fn test_find_content_two_jumps<'a> (clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
         let (client_a, client_b, client_c) = match clients.iter().collect_tuple() {
             Some((client_a, client_b, client_c)) => (client_a, client_b, client_c),
             None => {
@@ -196,7 +199,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_find_nodes_distance_of_client_c<'a>(clients: Vec<Client>) {
+    async fn test_find_nodes_distance_of_client_c<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
         let (client_a, client_b, client_c) = match clients.iter().collect_tuple() {
             Some((client_a, client_b, client_c)) => (client_a, client_b, client_c),
             None => {

@@ -1,9 +1,19 @@
+mod constants;
+
+use crate::constants::{
+    BERLIN_BLOCK_NUMBER, BYZANTIUM_BLOCK_NUMBER, CONSTANTINOPLE_BLOCK_NUMBER,
+    HOMESTEAD_BLOCK_NUMBER, ISTANBUL_BLOCK_NUMBER, LONDON_BLOCK_NUMBER, MERGE_BLOCK_NUMBER,
+    SHANGHAI_BLOCK_NUMBER, TEST_DATA_FILE_PATH,
+};
 use ethportal_api::types::portal::ContentInfo;
+use ethportal_api::utils::bytes::hex_encode;
 use ethportal_api::{
     ContentValue, Discv5ApiClient, HistoryContentKey, HistoryContentValue, HistoryNetworkApiClient,
-    PossibleHistoryContentValue,
+    OverlayContentKey, PossibleHistoryContentValue,
 };
-use hivesim::{dyn_async, Client, Simulation, Suite, Test, TestSpec, TwoClientTestSpec};
+use hivesim::{
+    dyn_async, Client, NClientTestSpec, Simulation, Suite, Test, TestSpec, TwoClientTestSpec,
+};
 use itertools::Itertools;
 use serde_json::json;
 use serde_yaml::Value;
@@ -54,155 +64,149 @@ async fn run_suite(host: Simulation, suite: Suite) {
     host.end_suite(suite_id).await;
 }
 
+fn content_pair_to_string_pair(
+    content_pair: (HistoryContentKey, HistoryContentValue),
+) -> (String, String) {
+    let (content_key, content_value) = content_pair;
+    (content_key.to_hex(), hex_encode(content_value.encode()))
+}
+
+/// Processed content data for history tests
+struct ProcessedContent {
+    content_type: String,
+    block_number: u64,
+    test_data: Vec<(String, String)>,
+}
+
+fn process_content(
+    content: Vec<(HistoryContentKey, HistoryContentValue)>,
+) -> Vec<ProcessedContent> {
+    let mut last_header = content.get(0).unwrap().clone();
+
+    let mut result: Vec<ProcessedContent> = vec![];
+    for history_content in content.into_iter() {
+        if let HistoryContentKey::BlockHeaderWithProof(_) = &history_content.0 {
+            last_header = history_content.clone();
+        }
+        let (content_type, block_number, test_data) =
+            if let HistoryContentValue::BlockHeaderWithProof(header_with_proof) = &last_header.1 {
+                match &history_content.0 {
+                    HistoryContentKey::BlockHeaderWithProof(_) => (
+                        "Block Header".to_string(),
+                        header_with_proof.header.number,
+                        vec![content_pair_to_string_pair(last_header.clone())],
+                    ),
+                    HistoryContentKey::BlockBody(_) => (
+                        "Block Body".to_string(),
+                        header_with_proof.header.number,
+                        vec![
+                            content_pair_to_string_pair(last_header.clone()),
+                            content_pair_to_string_pair(history_content),
+                        ],
+                    ),
+                    HistoryContentKey::BlockReceipts(_) => (
+                        "Block Receipt".to_string(),
+                        header_with_proof.header.number,
+                        vec![
+                            content_pair_to_string_pair(last_header.clone()),
+                            content_pair_to_string_pair(history_content),
+                        ],
+                    ),
+                    HistoryContentKey::EpochAccumulator(_) => (
+                        "Epoch Accumulator".to_string(),
+                        header_with_proof.header.number,
+                        vec![],
+                    ),
+                }
+            } else {
+                unreachable!("History test dated is formatted incorrectly")
+            };
+        result.push(ProcessedContent {
+            content_type,
+            block_number,
+            test_data,
+        })
+    }
+    result
+}
+
+fn get_flair(block_number: u64) -> String {
+    if block_number > SHANGHAI_BLOCK_NUMBER {
+        " (post-shanghai)".to_string()
+    } else if block_number > MERGE_BLOCK_NUMBER {
+        " (post-merge)".to_string()
+    } else if block_number > LONDON_BLOCK_NUMBER {
+        " (post-london)".to_string()
+    } else if block_number > BERLIN_BLOCK_NUMBER {
+        " (post-berlin)".to_string()
+    } else if block_number > ISTANBUL_BLOCK_NUMBER {
+        " (post-istanbul)".to_string()
+    } else if block_number > CONSTANTINOPLE_BLOCK_NUMBER {
+        " (post-constantinople)".to_string()
+    } else if block_number > BYZANTIUM_BLOCK_NUMBER {
+        " (post-byzantium)".to_string()
+    } else if block_number > HOMESTEAD_BLOCK_NUMBER {
+        " (post-homestead)".to_string()
+    } else {
+        "".to_string()
+    }
+}
+
 dyn_async! {
    async fn test_portal_interop<'a> (test: &'a mut Test, _client: Option<Client>) {
         // Get all available portal clients
         let clients = test.sim.client_types().await;
 
+        let values = std::fs::read_to_string(TEST_DATA_FILE_PATH)
+            .expect("cannot find test asset");
+        let values: Value = serde_yaml::from_str(&values).unwrap();
+        let content: Vec<(HistoryContentKey, HistoryContentValue)> = values.as_sequence().unwrap().iter().map(|value| {
+            let content_key: HistoryContentKey =
+                serde_yaml::from_value(value.get("content_key").unwrap().clone()).unwrap();
+            let content_value: HistoryContentValue =
+                serde_yaml::from_value(value.get("content_value").unwrap().clone()).unwrap();
+            (content_key, content_value)
+        }).collect();
+
         // Iterate over all possible pairings of clients and run the tests (including self-pairings)
         for (client_a, client_b) in clients.iter().cartesian_product(clients.iter()) {
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Block Header: block number 1 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_header_block_1,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
+            for ProcessedContent { content_type, block_number, test_data } in process_content(content.clone()) {
+                test.run(
+                    NClientTestSpec {
+                        name: format!("OFFER {}: block number {}{} {} --> {}", content_type, block_number, get_flair(block_number), client_a.name, client_b.name),
+                        description: "".to_string(),
+                        always_run: false,
+                        run: test_offer,
+                        environments: None,
+                        test_data: Some(test_data.clone()),
+                        clients: vec![client_a.clone(), client_b.clone()],
+                    }
+                ).await;
 
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Block Header: block number 100 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_header_block_100,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
+                test.run(
+                    NClientTestSpec {
+                        name: format!("RecursiveFindContent {}: block number {}{} {} --> {}", content_type, block_number, get_flair(block_number), client_a.name, client_b.name),
+                        description: "".to_string(),
+                        always_run: false,
+                        run: test_recursive_find_content,
+                        environments: None,
+                        test_data: Some(test_data.clone()),
+                        clients: vec![client_a.clone(), client_b.clone()],
+                    }
+                ).await;
 
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Block Header: block number 7000000 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_header_block_7000000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Block Header: block number 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_header_block_15600000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Block Header: block number 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_header_block_17510000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Block Body: block number 1 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_block_body_block_1,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Block Body: block number 100 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_block_body_block_100,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Block Body: block number 7000000 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_block_body_block_7000000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Block Body: block number 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_block_body_block_15600000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Block Body: block number 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_block_body_block_17510000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Receipts: block number 7000000 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_receipts_block_7000000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Receipts: block number 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_receipts_block_15600000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Receipts: block number 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_receipts_block_17510000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
+                test.run(
+                    NClientTestSpec {
+                        name: format!("FindContent {}: block number {}{} {} --> {}", content_type, block_number, get_flair(block_number), client_a.name, client_b.name),
+                        description: "".to_string(),
+                        always_run: false,
+                        run: test_find_content,
+                        environments: None,
+                        test_data: Some(test_data),
+                        clients: vec![client_a.clone(), client_b.clone()],
+                    }
+                ).await;
+            }
 
             // Test portal history ping
             test.run(TwoClientTestSpec {
@@ -237,327 +241,16 @@ dyn_async! {
                 }
             ).await;
 
-            // Test recursive find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("RecursiveFindContent Block Header: block number 1 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_recursive_find_content_header_block_1,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test recursive find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("RecursiveFindContent Block Header: block number 100 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_recursive_find_content_header_block_100,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test recursive find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("RecursiveFindContent Block Header: block number 7000000 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_recursive_find_content_header_block_7000000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test recursive find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("RecursiveFindContent Block Header: block number 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_recursive_find_content_header_block_15600000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test recursive find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("RecursiveFindContent Block Header: block number 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_recursive_find_content_header_block_17510000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test recursive find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("RecursiveFindContent Block Body: block number 1 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_recursive_find_content_block_body_block_1,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test recursive find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("RecursiveFindContent Block Body: block number 100 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_recursive_find_content_block_body_block_100,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test recursive find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("RecursiveFindContent Block Body: block number 7000000 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_recursive_find_content_block_body_block_7000000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test recursive find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("RecursiveFindContent Block Body: block number 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_recursive_find_content_block_body_block_15600000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test recursive find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("RecursiveFindContent Block Body: block number 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_recursive_find_content_block_body_block_17510000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test recursive find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("RecursiveFindContent Receipts: block number 7000000 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_recursive_find_content_receipts_block_7000000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test recursive find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("RecursiveFindContent Receipts: block number 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_recursive_find_content_receipts_block_15600000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test recursive find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("RecursiveFindContent Receipts: block number 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_recursive_find_content_receipts_block_17510000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("FindContent Block Header: block number 1 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_find_content_header_block_1,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("FindContent Block Header: block number 100 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_find_content_header_block_100,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("FindContent Block Header: block number 7000000 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_find_content_header_block_7000000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("FindContent Block Header: block number 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_find_content_header_block_15600000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("FindContent Block Header: block number 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_find_content_header_block_17510000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("FindContent Block Body: block number 1 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_find_content_block_body_block_1,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("FindContent Block Body: block number 100 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_find_content_block_body_block_100,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("FindContent Block Body: block number 7000000 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_find_content_block_body_block_7000000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("FindContent Block Body: block number 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_find_content_block_body_block_15600000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("FindContent Block Body: block number 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_find_content_block_body_block_17510000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("FindContent Receipts: block number 7000000 {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_find_content_receipts_block_7000000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("FindContent Receipts: block number 15600000 (post-merge) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_find_content_receipts_block_15600000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test find content Header With Proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("FindContent Receipts: block number 17510000 (post-shanghai) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_find_content_receipts_block_17510000,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
             // Test gossiping a collection of blocks to node B (B will gossip back to A)
             test.run(
-                TwoClientTestSpec {
+                NClientTestSpec {
                     name: format!("GOSSIP blocks from A:{} --> B:{}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_gossip_two_nodes,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
+                    environments: None,
+                    test_data: Some(content.clone().into_iter().map(content_pair_to_string_pair).collect()),
+                    clients: vec![client_a.clone(), client_b.clone()],
                 }
             ).await;
         }
@@ -602,209 +295,22 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_offer_header_block_1<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[0].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[0].get("content_value").unwrap().clone()).unwrap();
-        test_offer_x(client_a, client_b, (header_key, header_value), None).await;
-    }
-}
-
-dyn_async! {
-    async fn test_offer_header_block_100<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[2].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[2].get("content_value").unwrap().clone()).unwrap();
-        test_offer_x(client_a, client_b, (header_key, header_value), None).await;
-    }
-}
-
-dyn_async! {
-    async fn test_offer_header_block_7000000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[4].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[4].get("content_value").unwrap().clone()).unwrap();
-        test_offer_x(client_a, client_b, (header_key, header_value), None).await;
-    }
-}
-
-dyn_async! {
-    async fn test_offer_header_block_15600000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[7].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[7].get("content_value").unwrap().clone()).unwrap();
-        test_offer_x(client_a, client_b, (header_key, header_value), None).await;
-    }
-}
-
-dyn_async! {
-    async fn test_offer_header_block_17510000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[10].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[10].get("content_value").unwrap().clone()).unwrap();
-        test_offer_x(client_a, client_b, (header_key, header_value), None).await;
-    }
-}
-
-dyn_async! {
-    async fn test_offer_block_body_block_1<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[0].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[0].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[1].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[1].get("content_value").unwrap().clone()).unwrap();
-        test_offer_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    async fn test_offer_block_body_block_100<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[2].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[2].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[3].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[3].get("content_value").unwrap().clone()).unwrap();
-        test_offer_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    async fn test_offer_block_body_block_7000000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[4].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[4].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[5].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[5].get("content_value").unwrap().clone()).unwrap();
-        test_offer_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    async fn test_offer_block_body_block_15600000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[7].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[7].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[8].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[8].get("content_value").unwrap().clone()).unwrap();
-        test_offer_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    async fn test_offer_block_body_block_17510000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[10].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[10].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[11].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[11].get("content_value").unwrap().clone()).unwrap();
-        test_offer_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    async fn test_offer_receipts_block_7000000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[4].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[4].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[6].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[6].get("content_value").unwrap().clone()).unwrap();
-        test_offer_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    async fn test_offer_receipts_block_15600000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[7].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[7].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[9].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[9].get("content_value").unwrap().clone()).unwrap();
-        test_offer_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    async fn test_offer_receipts_block_17510000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[10].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[10].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[12].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[12].get("content_value").unwrap().clone()).unwrap();
-        test_offer_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    async fn test_offer_x<'a>(client_a: Client, client_b: Client, target_content: (HistoryContentKey, HistoryContentValue), optional_content: Option<(HistoryContentKey, HistoryContentValue)>) {
-        if let Some((optional_key, optional_value)) = optional_content {
+    async fn test_offer<'a>(clients: Vec<Client>, test_data: Option<Vec<(String, String)>>) {
+        let (client_a, client_b) = match clients.iter().collect_tuple() {
+            Some((client_a, client_b)) => (client_a, client_b),
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
+        let test_data = match test_data {
+            Some(test_data) => test_data,
+            None => panic!("Expected test data non was provided"),
+        };
+        if let Some((optional_key, optional_value)) = test_data.get(1) {
+            let optional_key: HistoryContentKey =
+                serde_json::from_value(json!(optional_key)).unwrap();
+            let optional_value: HistoryContentValue =
+                serde_json::from_value(json!(optional_value)).unwrap();
             match client_b.rpc.store(optional_key, optional_value).await {
                 Ok(result) => if !result {
                     panic!("Unable to store optional content for recursive find content");
@@ -814,8 +320,11 @@ dyn_async! {
                 }
             }
         }
-
-        let (target_key, target_value) = target_content;
+        let (target_key, target_value) = test_data.get(0).expect("Target content is required for this test");
+        let target_key: HistoryContentKey =
+            serde_json::from_value(json!(target_key)).unwrap();
+        let target_value: HistoryContentValue =
+            serde_json::from_value(json!(target_value)).unwrap();
         match client_b.rpc.store(target_key.clone(), target_value.clone()).await {
             Ok(result) => if !result {
                 panic!("Error storing target content for recursive find content");
@@ -921,223 +430,23 @@ dyn_async! {
 }
 
 dyn_async! {
-    // test that a node will return a header via RECURSIVEFINDCONTENT that is stored locally
-    async fn test_recursive_find_content_header_block_1<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[0].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[0].get("content_value").unwrap().clone()).unwrap();
-        test_recursive_find_content_x(client_a, client_b, (header_key, header_value), None).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a header via RECURSIVEFINDCONTENT that is stored locally
-    async fn test_recursive_find_content_header_block_100<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[2].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[2].get("content_value").unwrap().clone()).unwrap();
-        test_recursive_find_content_x(client_a, client_b, (header_key, header_value), None).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a header via RECURSIVEFINDCONTENT that is stored locally
-    async fn test_recursive_find_content_header_block_7000000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[4].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[4].get("content_value").unwrap().clone()).unwrap();
-        test_recursive_find_content_x(client_a, client_b, (header_key, header_value), None).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a header via RECURSIVEFINDCONTENT that is stored locally
-    async fn test_recursive_find_content_header_block_15600000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[7].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[7].get("content_value").unwrap().clone()).unwrap();
-        test_recursive_find_content_x(client_a, client_b, (header_key, header_value), None).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a header via RECURSIVEFINDCONTENT that is stored locally
-    async fn test_recursive_find_content_header_block_17510000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[10].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[10].get("content_value").unwrap().clone()).unwrap();
-        test_recursive_find_content_x(client_a, client_b, (header_key, header_value), None).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a block body via RECURSIVEFINDCONTENT that is stored locally
-    async fn test_recursive_find_content_block_body_block_1<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[0].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[0].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[1].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[1].get("content_value").unwrap().clone()).unwrap();
-        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a block body via RECURSIVEFINDCONTENT that is stored locally
-    async fn test_recursive_find_content_block_body_block_100<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[2].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[2].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[3].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[3].get("content_value").unwrap().clone()).unwrap();
-        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a block body via RECURSIVEFINDCONTENT that is stored locally
-    async fn test_recursive_find_content_block_body_block_7000000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[4].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[4].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[5].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[5].get("content_value").unwrap().clone()).unwrap();
-        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a block body via RECURSIVEFINDCONTENT that is stored locally
-    async fn test_recursive_find_content_block_body_block_15600000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[7].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[7].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[8].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[8].get("content_value").unwrap().clone()).unwrap();
-        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a block body via RECURSIVEFINDCONTENT that is stored locally
-    async fn test_recursive_find_content_block_body_block_17510000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[10].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[10].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[11].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[11].get("content_value").unwrap().clone()).unwrap();
-        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a receipts via RECURSIVEFINDCONTENT that is stored locally
-    async fn test_recursive_find_content_receipts_block_7000000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[4].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[4].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[6].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[6].get("content_value").unwrap().clone()).unwrap();
-        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a receipts via RECURSIVEFINDCONTENT that is stored locally
-    async fn test_recursive_find_content_receipts_block_15600000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[7].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[7].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[9].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[9].get("content_value").unwrap().clone()).unwrap();
-        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a receipts via RECURSIVEFINDCONTENT that is stored locally
-    async fn test_recursive_find_content_receipts_block_17510000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[10].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[10].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[12].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[12].get("content_value").unwrap().clone()).unwrap();
-        test_recursive_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
     // test that a node will return a content via RECURSIVEFINDCONTENT template that it has stored locally
-    async fn test_recursive_find_content_x<'a>(client_a: Client, client_b: Client, target_content: (HistoryContentKey, HistoryContentValue), optional_content: Option<(HistoryContentKey, HistoryContentValue)>) {
-        if let Some((optional_key, optional_value)) = optional_content {
+    async fn test_recursive_find_content<'a>(clients: Vec<Client>, test_data: Option<Vec<(String, String)>>) {
+        let (client_a, client_b) = match clients.iter().collect_tuple() {
+            Some((client_a, client_b)) => (client_a, client_b),
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
+        let test_data = match test_data {
+            Some(test_data) => test_data,
+            None => panic!("Expected test data non was provided"),
+        };
+        if let Some((optional_key, optional_value)) = test_data.get(1) {
+            let optional_key: HistoryContentKey =
+                serde_json::from_value(json!(optional_key)).unwrap();
+            let optional_value: HistoryContentValue =
+                serde_json::from_value(json!(optional_value)).unwrap();
             match client_b.rpc.store(optional_key, optional_value).await {
                 Ok(result) => if !result {
                     panic!("Unable to store optional content for recursive find content");
@@ -1148,7 +457,11 @@ dyn_async! {
             }
         }
 
-        let (target_key, target_value) = target_content;
+        let (target_key, target_value) = test_data.get(0).expect("Target content is required for this test");
+        let target_key: HistoryContentKey =
+            serde_json::from_value(json!(target_key)).unwrap();
+        let target_value: HistoryContentValue =
+            serde_json::from_value(json!(target_value)).unwrap();
         match client_b.rpc.store(target_key.clone(), target_value.clone()).await {
             Ok(result) => if !result {
                 panic!("Error storing target content for recursive find content");
@@ -1202,223 +515,23 @@ dyn_async! {
 }
 
 dyn_async! {
-    // test that a node will return a header via FINDCONTENT that is stored locally
-    async fn test_find_content_header_block_1<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[0].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[0].get("content_value").unwrap().clone()).unwrap();
-        test_find_content_x(client_a, client_b, (header_key, header_value), None).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a header via FINDCONTENT that is stored locally
-    async fn test_find_content_header_block_100<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[2].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[2].get("content_value").unwrap().clone()).unwrap();
-        test_find_content_x(client_a, client_b, (header_key, header_value), None).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a header via FINDCONTENT that is stored locally
-    async fn test_find_content_header_block_7000000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[4].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[4].get("content_value").unwrap().clone()).unwrap();
-        test_find_content_x(client_a, client_b, (header_key, header_value), None).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a header via FINDCONTENT that is stored locally
-    async fn test_find_content_header_block_15600000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[7].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[7].get("content_value").unwrap().clone()).unwrap();
-        test_find_content_x(client_a, client_b, (header_key, header_value), None).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a header via FINDCONTENT that is stored locally
-    async fn test_find_content_header_block_17510000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[10].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[10].get("content_value").unwrap().clone()).unwrap();
-        test_find_content_x(client_a, client_b, (header_key, header_value), None).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a block body via FINDCONTENT that is stored locally
-    async fn test_find_content_block_body_block_1<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[0].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[0].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[1].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[1].get("content_value").unwrap().clone()).unwrap();
-        test_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a block body via FINDCONTENT that is stored locally
-    async fn test_find_content_block_body_block_100<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[2].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[2].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[3].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[3].get("content_value").unwrap().clone()).unwrap();
-        test_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a block body via FINDCONTENT that is stored locally
-    async fn test_find_content_block_body_block_7000000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[4].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[4].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[5].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[5].get("content_value").unwrap().clone()).unwrap();
-        test_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a block body via FINDCONTENT that is stored locally
-    async fn test_find_content_block_body_block_15600000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[7].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[7].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[8].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[8].get("content_value").unwrap().clone()).unwrap();
-        test_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a block body via FINDCONTENT that is stored locally
-    async fn test_find_content_block_body_block_17510000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[10].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[10].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[11].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[11].get("content_value").unwrap().clone()).unwrap();
-        test_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a receipts via FINDCONTENT that is stored locally
-    async fn test_find_content_receipts_block_7000000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[4].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[4].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[6].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[6].get("content_value").unwrap().clone()).unwrap();
-        test_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a receipts via FINDCONTENT that is stored locally
-    async fn test_find_content_receipts_block_15600000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[7].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[7].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[9].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[9].get("content_value").unwrap().clone()).unwrap();
-        test_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
-    // test that a node will return a receipts via FINDCONTENT that is stored locally
-    async fn test_find_content_receipts_block_17510000<'a> (client_a: Client, client_b: Client) {
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-        let header_key: HistoryContentKey =
-            serde_yaml::from_value(values[10].get("content_key").unwrap().clone()).unwrap();
-        let header_value: HistoryContentValue =
-            serde_yaml::from_value(values[10].get("content_value").unwrap().clone()).unwrap();
-        let content_key: HistoryContentKey =
-            serde_yaml::from_value(values[12].get("content_key").unwrap().clone()).unwrap();
-        let content_value: HistoryContentValue =
-            serde_yaml::from_value(values[12].get("content_value").unwrap().clone()).unwrap();
-        test_find_content_x(client_a, client_b, (content_key, content_value), Some((header_key, header_value))).await;
-    }
-}
-
-dyn_async! {
     // test that a node will return a x content via FINDCONTENT that it has stored locally
-    async fn test_find_content_x<'a> (client_a: Client, client_b: Client, target_content: (HistoryContentKey, HistoryContentValue), optional_content: Option<(HistoryContentKey, HistoryContentValue)>) {
-        if let Some((optional_key, optional_value)) = optional_content {
+    async fn test_find_content<'a> (clients: Vec<Client>, test_data: Option<Vec<(String, String)>>) {
+        let (client_a, client_b) = match clients.iter().collect_tuple() {
+            Some((client_a, client_b)) => (client_a, client_b),
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
+        let test_data = match test_data {
+            Some(test_data) => test_data,
+            None => panic!("Expected test data none was provided"),
+        };
+        if let Some((optional_key, optional_value)) = test_data.get(1) {
+            let optional_key: HistoryContentKey =
+                serde_json::from_value(json!(optional_key)).unwrap();
+            let optional_value: HistoryContentValue =
+                serde_json::from_value(json!(optional_value)).unwrap();
             match client_b.rpc.store(optional_key, optional_value).await {
                 Ok(result) => if !result {
                     panic!("Unable to store optional content for find content");
@@ -1429,7 +542,11 @@ dyn_async! {
             }
         }
 
-        let (target_key, target_value) = target_content;
+        let (target_key, target_value) = test_data.get(0).expect("Target content is required for this test");
+        let target_key: HistoryContentKey =
+            serde_json::from_value(json!(target_key)).unwrap();
+        let target_value: HistoryContentValue =
+            serde_json::from_value(json!(target_value)).unwrap();
         match client_b.rpc.store(target_key.clone(), target_value.clone()).await {
             Ok(result) => if !result {
                 panic!("Error storing target content for find content");
@@ -1475,7 +592,17 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_gossip_two_nodes<'a> (client_a: Client, client_b: Client) {
+    async fn test_gossip_two_nodes<'a> (clients: Vec<Client>, test_data: Option<Vec<(String, String)>>) {
+        let (client_a, client_b) = match clients.iter().collect_tuple() {
+            Some((client_a, client_b)) => (client_a, client_b),
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
+        let test_data = match test_data {
+            Some(test_data) => test_data,
+            None => panic!("Expected test data non was provided"),
+        };
         // connect clients
         let client_b_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
@@ -1492,15 +619,11 @@ dyn_async! {
         }
 
         // With default node settings nodes should be storing all content
-        let values = std::fs::read_to_string("./test-data/test_data_collection_of_forks_blocks.yaml")
-            .expect("cannot find test asset");
-        let values: Value = serde_yaml::from_str(&values).unwrap();
-
-        for value in values.as_sequence().unwrap() {
+        for (content_key, content_value) in test_data.clone() {
             let content_key: HistoryContentKey =
-                serde_yaml::from_value(value.get("content_key").unwrap().clone()).unwrap();
+                serde_json::from_value(json!(content_key)).unwrap();
             let content_value: HistoryContentValue =
-                serde_yaml::from_value(value.get("content_value").unwrap().clone()).unwrap();
+                serde_json::from_value(json!(content_value)).unwrap();
 
             match client_a.rpc.gossip(content_key.clone(), content_value.clone()).await {
                 Ok(nodes_gossiped_to) => {
@@ -1529,11 +652,11 @@ dyn_async! {
             "17510000 (post-shanghai) header", "17510000 (post-shanghai) block body", "17510000 (post-shanghai) receipt"];
 
         let mut result = vec![];
-        for (index, value) in values.as_sequence().unwrap().iter().enumerate() {
+        for (index, (content_key, content_value)) in test_data.into_iter().enumerate() {
             let content_key: HistoryContentKey =
-                serde_yaml::from_value(value.get("content_key").unwrap().clone()).unwrap();
+                serde_json::from_value(json!(content_key)).unwrap();
             let content_value: HistoryContentValue =
-                serde_yaml::from_value(value.get("content_value").unwrap().clone()).unwrap();
+                serde_json::from_value(json!(content_value)).unwrap();
 
             match client_b.rpc.local_content(content_key.clone()).await {
                 Ok(possible_content) => {
