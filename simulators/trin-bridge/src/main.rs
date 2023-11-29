@@ -167,8 +167,7 @@ dyn_async! {
         }).collect();
         let comments = process_content(content_vec.clone());
 
-        // wait content_vec.len() seconds for data to propagate
-        // This value is determined by how long the sleeps are in the bridge code
+        // wait content_vec.len() seconds for data to propagate, giving more time if more items are propagating
         tokio::time::sleep(Duration::from_secs(content_vec.len() as u64)).await;
 
         let mut result = vec![];
