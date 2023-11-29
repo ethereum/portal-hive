@@ -262,22 +262,30 @@ pub async fn run_test(
 ) {
     // Register test on simulation server and initialize the T.
     let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
-
-    let test = &mut Test {
-        sim: host.clone(),
-        test_id,
-        suite: test.suite,
-        suite_id: test.suite_id,
-        result: Default::default(),
-    };
-
-    test.result.pass = true;
+    let suite_id = test.suite_id;
 
     // run test function
-    (func)(test, client).await;
+    let cloned_host = host.clone();
 
-    host.end_test(test.suite_id, test_id, test.result.clone())
-        .await;
+    let test_result = extract_test_results(
+        tokio::spawn(async move {
+            let test = &mut Test {
+                sim: cloned_host,
+                test_id,
+                suite: test.suite,
+                suite_id,
+                result: Default::default(),
+            };
+
+            test.result.pass = true;
+
+            // run test function
+            (func)(test, client).await;
+        })
+        .await,
+    );
+
+    host.end_test(suite_id, test_id, test_result).await;
 }
 
 #[derive(Clone)]
