@@ -641,33 +641,53 @@ dyn_async! {
             }
         }
 
-        // wait 8 seconds for data to propagate
-        // This value is determined by how long the sleeps are in the gossip code
-        // So we may lower this or remove it depending on what we find.
-        tokio::time::sleep(Duration::from_secs(8)).await;
+        // wait content_vec.len() seconds for data to propagate, giving more time if more items are propagating
+        tokio::time::sleep(Duration::from_secs(test_data.len() as u64)).await;
 
-        let comments = vec!["1 header", "1 block body", "100 header",
-            "100 block body", "7000000 header", "7000000 block body",
-            "7000000 receipt", "15600000 (post-merge) header", "15600000 (post-merge) block body", "15600000 (post-merge) receipt",
-            "17510000 (post-shanghai) header", "17510000 (post-shanghai) block body", "17510000 (post-shanghai) receipt"];
-
+        let (first_header_key, first_header_value) = test_data.get(0).unwrap();
+        let first_header_key: HistoryContentKey =
+                serde_json::from_value(json!(first_header_key)).unwrap();
+        let first_header_value: HistoryContentValue =
+                serde_json::from_value(json!(first_header_value)).unwrap();
+        let mut last_header_seen: (HistoryContentKey, HistoryContentValue) = (first_header_key, first_header_value);
         let mut result = vec![];
-        for (index, (content_key, content_value)) in test_data.into_iter().enumerate() {
+        for (content_key, content_value) in test_data.into_iter() {
             let content_key: HistoryContentKey =
                 serde_json::from_value(json!(content_key)).unwrap();
             let content_value: HistoryContentValue =
                 serde_json::from_value(json!(content_value)).unwrap();
 
+            if let HistoryContentKey::BlockHeaderWithProof(_) = &content_key {
+                last_header_seen = (content_key.clone(), content_value.clone());
+            }
+            let comment =
+                if let HistoryContentValue::BlockHeaderWithProof(header_with_proof) = &last_header_seen.1 {
+                    let content_type = match &content_key {
+                        HistoryContentKey::BlockHeaderWithProof(_) => "header".to_string(),
+                        HistoryContentKey::BlockBody(_) => "body".to_string(),
+                        HistoryContentKey::BlockReceipts(_) => "receipt".to_string(),
+                        HistoryContentKey::EpochAccumulator(_) => "epoch accumulator".to_string(),
+                    };
+                    format!(
+                        "{}{} {}",
+                        header_with_proof.header.number,
+                        get_flair(header_with_proof.header.number),
+                        content_type
+                    )
+                } else {
+                    unreachable!("History test dated is formatted incorrectly")
+                };
+
             match client_b.rpc.local_content(content_key.clone()).await {
                 Ok(possible_content) => {
-                   match possible_content {
+                    match possible_content {
                         PossibleHistoryContentValue::ContentPresent(content) => {
                             if content != content_value {
-                                result.push(format!("Error content received for block {} was different then expected", comments[index]));
+                                result.push(format!("Error content received for block {comment} was different then expected"));
                             }
                         }
                         PossibleHistoryContentValue::ContentAbsent => {
-                            result.push(format!("Error content for block {} was absent", comments[index]));
+                            result.push(format!("Error content for block {comment} was absent"));
                         }
                     }
                 }
