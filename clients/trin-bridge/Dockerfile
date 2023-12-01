@@ -1,6 +1,6 @@
 FROM portalnetwork/trin:latest-bridge
 
-ADD test_data_collection_of_forks_blocks.yaml /test_data_collection_of_forks_blocks.yaml
+ADD https://raw.githubusercontent.com/ethereum/portal-spec-tests/master/tests/mainnet/history/hive/test_data_collection_of_forks_blocks.yaml /test_data_collection_of_forks_blocks.yaml
 ADD trin_bridge.sh /trin_bridge.sh
 RUN chmod +x /trin_bridge.sh
 
