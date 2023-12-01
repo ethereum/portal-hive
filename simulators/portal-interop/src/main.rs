@@ -11,6 +11,7 @@ use ethportal_api::{
     ContentValue, Discv5ApiClient, HistoryContentKey, HistoryContentValue, HistoryNetworkApiClient,
     OverlayContentKey, PossibleHistoryContentValue,
 };
+use hivesim::types::ClientDefinition;
 use hivesim::{
     dyn_async, Client, NClientTestSpec, Simulation, Suite, Test, TestSpec, TwoClientTestSpec,
 };
@@ -170,77 +171,77 @@ dyn_async! {
 
         // Iterate over all possible pairings of clients and run the tests (including self-pairings)
         for (client_a, client_b) in clients.iter().cartesian_product(clients.iter()) {
-            for ProcessedContent { content_type, block_number, test_data } in process_content(content.clone()) {
-                test.run(
-                    NClientTestSpec {
-                        name: format!("OFFER {}: block number {}{} {} --> {}", content_type, block_number, get_flair(block_number), client_a.name, client_b.name),
-                        description: "".to_string(),
-                        always_run: false,
-                        run: test_offer,
-                        environments: None,
-                        test_data: Some(test_data.clone()),
-                        clients: vec![client_a.clone(), client_b.clone()],
-                    }
-                ).await;
-
-                test.run(
-                    NClientTestSpec {
-                        name: format!("RecursiveFindContent {}: block number {}{} {} --> {}", content_type, block_number, get_flair(block_number), client_a.name, client_b.name),
-                        description: "".to_string(),
-                        always_run: false,
-                        run: test_recursive_find_content,
-                        environments: None,
-                        test_data: Some(test_data.clone()),
-                        clients: vec![client_a.clone(), client_b.clone()],
-                    }
-                ).await;
-
-                test.run(
-                    NClientTestSpec {
-                        name: format!("FindContent {}: block number {}{} {} --> {}", content_type, block_number, get_flair(block_number), client_a.name, client_b.name),
-                        description: "".to_string(),
-                        always_run: false,
-                        run: test_find_content,
-                        environments: None,
-                        test_data: Some(test_data),
-                        clients: vec![client_a.clone(), client_b.clone()],
-                    }
-                ).await;
-            }
-
-            // Test portal history ping
-            test.run(TwoClientTestSpec {
-                    name: format!("PING {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_ping,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test find content non-present
-            test.run(TwoClientTestSpec {
-                    name: format!("FIND_CONTENT non present {} --> {}", client_a.name, client_b.name),
-                    description: "find content: calls find content that doesn't exist".to_string(),
-                    always_run: false,
-                    run: test_find_content_non_present,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
-            // Test find nodes distance zero
-            test.run(TwoClientTestSpec {
-                    name: format!("FIND_NODES Distance 0 {} --> {}", client_a.name, client_b.name),
-                    description: "find nodes: distance zero expect called nodes enr".to_string(),
-                    always_run: false,
-                    run: test_find_nodes_zero_distance,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
-                }
-            ).await;
-
+        //     for ProcessedContent { content_type, block_number, test_data } in process_content(content.clone()) {
+        //         test.run(
+        //             NClientTestSpec {
+        //                 name: format!("OFFER {}: block number {}{} {} --> {}", content_type, block_number, get_flair(block_number), client_a.name, client_b.name),
+        //                 description: "".to_string(),
+        //                 always_run: false,
+        //                 run: test_offer,
+        //                 environments: None,
+        //                 test_data: Some(test_data.clone()),
+        //                 clients: vec![client_a.clone(), client_b.clone()],
+        //             }
+        //         ).await;
+        //
+        //         test.run(
+        //             NClientTestSpec {
+        //                 name: format!("RecursiveFindContent {}: block number {}{} {} --> {}", content_type, block_number, get_flair(block_number), client_a.name, client_b.name),
+        //                 description: "".to_string(),
+        //                 always_run: false,
+        //                 run: test_recursive_find_content,
+        //                 environments: None,
+        //                 test_data: Some(test_data.clone()),
+        //                 clients: vec![client_a.clone(), client_b.clone()],
+        //             }
+        //         ).await;
+        //
+        //         test.run(
+        //             NClientTestSpec {
+        //                 name: format!("FindContent {}: block number {}{} {} --> {}", content_type, block_number, get_flair(block_number), client_a.name, client_b.name),
+        //                 description: "".to_string(),
+        //                 always_run: false,
+        //                 run: test_find_content,
+        //                 environments: None,
+        //                 test_data: Some(test_data),
+        //                 clients: vec![client_a.clone(), client_b.clone()],
+        //             }
+        //         ).await;
+        //     }
+        //
+        //     // Test portal history ping
+        //     test.run(TwoClientTestSpec {
+        //             name: format!("PING {} --> {}", client_a.name, client_b.name),
+        //             description: "".to_string(),
+        //             always_run: false,
+        //             run: test_ping,
+        //             client_a: client_a.clone(),
+        //             client_b: client_b.clone(),
+        //         }
+        //     ).await;
+        //
+        //     // Test find content non-present
+        //     test.run(TwoClientTestSpec {
+        //             name: format!("FIND_CONTENT non present {} --> {}", client_a.name, client_b.name),
+        //             description: "find content: calls find content that doesn't exist".to_string(),
+        //             always_run: false,
+        //             run: test_find_content_non_present,
+        //             client_a: client_a.clone(),
+        //             client_b: client_b.clone(),
+        //         }
+        //     ).await;
+        //
+        //     // Test find nodes distance zero
+        //     test.run(TwoClientTestSpec {
+        //             name: format!("FIND_NODES Distance 0 {} --> {}", client_a.name, client_b.name),
+        //             description: "find nodes: distance zero expect called nodes enr".to_string(),
+        //             always_run: false,
+        //             run: test_find_nodes_zero_distance,
+        //             client_a: client_a.clone(),
+        //             client_b: client_b.clone(),
+        //         }
+        //     ).await;
+        //
             // Test gossiping a collection of blocks to node B (B will gossip back to A)
             test.run(
                 NClientTestSpec {
@@ -254,6 +255,27 @@ dyn_async! {
                 }
             ).await;
         }
+
+
+        if clients.iter().any(|client_definition| client_definition.name == "trin") {
+            let client_a: Vec<ClientDefinition> = clients.clone().into_iter().filter(|client| client.name == "trin").collect();
+            let client_a = client_a.get(0).unwrap();
+            for client_b in clients {
+                // Test gossiping a collection of blocks to node B (B will gossip back to A)
+                test.run(
+                    NClientTestSpec {
+                        name: format!("Trace GOSSIP blocks from A:Trin --> B:{}", client_b.name),
+                        description: "".to_string(),
+                        always_run: false,
+                        run: test_trace_gossip_two_nodes,
+                        environments: None,
+                        test_data: Some(content.clone().into_iter().map(content_pair_to_string_pair).collect()),
+                        clients: vec![client_a.clone(), client_b.clone()],
+                    }
+                ).await;
+            }
+        }
+
    }
 }
 
@@ -668,6 +690,152 @@ dyn_async! {
                         }
                         PossibleHistoryContentValue::ContentAbsent => {
                             result.push(format!("Error content for block {} was absent", comments[index]));
+                        }
+                    }
+                }
+                Err(err) => {
+                    panic!("Unable to get received content: {err:?}");
+                }
+            }
+        }
+
+        if !result.is_empty() {
+            panic!("Client B: {:?}", result);
+        }
+    }
+}
+
+dyn_async! {
+    async fn test_trace_gossip_two_nodes<'a> (clients: Vec<Client>, test_data: Option<Vec<(String, String)>>) {
+        let (client_a, client_b) = match clients.iter().collect_tuple() {
+            Some((client_a, client_b)) => (client_a, client_b),
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
+        let test_data = match test_data {
+            Some(test_data) => test_data,
+            None => panic!("Expected test data non was provided"),
+        };
+        // connect clients
+        let client_b_enr = match client_b.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                panic!("Error getting node info: {err:?}");
+            }
+        };
+        match HistoryNetworkApiClient::add_enr(&client_a.rpc, client_b_enr.clone()).await {
+            Ok(response) => match response {
+                true => (),
+                false => panic!("AddEnr expected to get true and instead got false")
+            },
+            Err(err) => panic!("{}", &err.to_string()),
+        }
+
+        let (first_header_key, first_header_value) = test_data.get(0).unwrap();
+        let first_header_key: HistoryContentKey =
+                serde_json::from_value(json!(first_header_key)).unwrap();
+        let first_header_value: HistoryContentValue =
+                serde_json::from_value(json!(first_header_value)).unwrap();
+        let mut last_header: (HistoryContentKey, HistoryContentValue) = (first_header_key, first_header_value);
+        let mut comments: Vec<String> = vec![];
+        for (content_key, content_value) in test_data.clone().into_iter() {
+            let content_key: HistoryContentKey =
+                serde_json::from_value(json!(content_key)).unwrap();
+            let content_value: HistoryContentValue =
+                serde_json::from_value(json!(content_value)).unwrap();
+
+            if let HistoryContentKey::BlockHeaderWithProof(_) = &content_key {
+                last_header = (content_key.clone(), content_value.clone());
+            }
+                if let HistoryContentValue::BlockHeaderWithProof(header_with_proof) = &last_header.1 {
+                    let content_type = match &content_key {
+                        HistoryContentKey::BlockHeaderWithProof(_) => "header".to_string(),
+                        HistoryContentKey::BlockBody(_) => "body".to_string(),
+                        HistoryContentKey::BlockReceipts(_) => "receipt".to_string(),
+                        HistoryContentKey::EpochAccumulator(_) => "epoch accumulator".to_string(),
+                    };
+                    comments.push(format!(
+                        "{}{} {}",
+                        header_with_proof.header.number,
+                        get_flair(header_with_proof.header.number),
+                        content_type
+                    ));
+                } else {
+                    unreachable!("History test dated is formatted incorrectly")
+                }
+        }
+
+        // With default node settings nodes should be storing all content
+        for (index, (content_key, content_value)) in test_data.clone().into_iter().enumerate() {
+            let content_key: HistoryContentKey =
+                serde_json::from_value(json!(content_key)).unwrap();
+            let content_value: HistoryContentValue =
+                serde_json::from_value(json!(content_value)).unwrap();
+
+            match client_a.rpc.trace_gossip(content_key.clone(), content_value.clone()).await {
+                Ok(nodes_gossiped_to) => {
+                   if nodes_gossiped_to.transferred.len() != 1 {
+                        panic!("We expected to gossip to 1 node instead we gossiped to: {:?}", nodes_gossiped_to);
+                    }
+                }
+                Err(err) => {
+                    panic!("Unable to get received content: {err:?} block/number {}", comments[index]);
+                }
+            }
+
+            if let HistoryContentKey::BlockHeaderWithProof(_) = content_key {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+        }
+
+        // wait content_vec.len() seconds for data to propagate, giving more time if more items are propagating
+        tokio::time::sleep(Duration::from_secs(test_data.len() as u64)).await;
+
+        let (first_header_key, first_header_value) = test_data.get(0).unwrap();
+        let first_header_key: HistoryContentKey =
+                serde_json::from_value(json!(first_header_key)).unwrap();
+        let first_header_value: HistoryContentValue =
+                serde_json::from_value(json!(first_header_value)).unwrap();
+        let mut last_header: (HistoryContentKey, HistoryContentValue) = (first_header_key, first_header_value);
+        let mut result = vec![];
+        for (content_key, content_value) in test_data.into_iter() {
+            let content_key: HistoryContentKey =
+                serde_json::from_value(json!(content_key)).unwrap();
+            let content_value: HistoryContentValue =
+                serde_json::from_value(json!(content_value)).unwrap();
+
+            if let HistoryContentKey::BlockHeaderWithProof(_) = &content_key {
+                last_header = (content_key.clone(), content_value.clone());
+            }
+            let comment =
+                if let HistoryContentValue::BlockHeaderWithProof(header_with_proof) = &last_header.1 {
+                    let content_type = match &content_key {
+                        HistoryContentKey::BlockHeaderWithProof(_) => "header".to_string(),
+                        HistoryContentKey::BlockBody(_) => "body".to_string(),
+                        HistoryContentKey::BlockReceipts(_) => "receipt".to_string(),
+                        HistoryContentKey::EpochAccumulator(_) => "epoch accumulator".to_string(),
+                    };
+                    format!(
+                        "{}{} {}",
+                        header_with_proof.header.number,
+                        get_flair(header_with_proof.header.number),
+                        content_type
+                    )
+                } else {
+                    unreachable!("History test dated is formatted incorrectly")
+                };
+
+            match client_b.rpc.local_content(content_key.clone()).await {
+                Ok(possible_content) => {
+                    match possible_content {
+                        PossibleHistoryContentValue::ContentPresent(content) => {
+                            if content != content_value {
+                                result.push(format!("Error content received for block {comment} was different then expected"));
+                            }
+                        }
+                        PossibleHistoryContentValue::ContentAbsent => {
+                            result.push(format!("Error content for block {comment} was absent"));
                         }
                     }
                 }

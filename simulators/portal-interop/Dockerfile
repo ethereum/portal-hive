@@ -2,6 +2,7 @@ FROM rust:1.71.1 AS builder
 
 # create a new empty shell project
 RUN USER=root cargo new --bin portal-interop
+RUN apt-get update && apt-get install clang -y
 WORKDIR /portal-interop
 
 # copy over manifests and source to build image
