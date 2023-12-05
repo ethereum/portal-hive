@@ -109,7 +109,7 @@ dyn_async! {
         // Get all available portal clients
         let clients = test.sim.client_types().await;
         if !clients.iter().any(|client_definition| client_definition.name == *TRIN_BRIDGE_CLIENT_TYPE) {
-            panic!("This simulator is required to be ran with client `trin-portal`")
+            panic!("This simulator is required to be ran with client `trin-bridge`")
         }
         let clients: Vec<ClientDefinition> = clients.into_iter().filter(|client| client.name != *TRIN_BRIDGE_CLIENT_TYPE).collect();
 
