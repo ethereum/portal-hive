@@ -85,7 +85,7 @@ const n_client_demo = async (test: Test, clients: IClient[]) => {
           `,\n               `,
         )}] \n         got: [${peers.join(
           `,\n               `,
-        )}] \n(${client}): portal_historyRoutingTableInfo => ${JSON.stringify(table, null, 2)}`,
+        )}] \n------\n(${client}): portal_historyRoutingTableInfo => ${JSON.stringify(table, null, 2)}`,
       )
     } else {
       passing.push(
