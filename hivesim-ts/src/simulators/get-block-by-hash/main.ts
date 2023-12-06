@@ -60,6 +60,7 @@ const get_block_by_hash = async (test: Test, clients: IClient[]) => {
       await clients[idx].rpc.request('portal_historyPing', [_client[1].result.enr])
     }
   }
+  await new Promise((r) => setTimeout(r, 2000))
   const block1 = await clients[0].rpc.request('eth_getBlockByHash', [
     '0x8faf8b77fedb23eb4d591433ac3643be1764209efa52ac6386e10d1a127e4220',
     true,
