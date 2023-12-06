@@ -2,13 +2,13 @@ FROM node:18
 
 RUN npm i -g npm@9.8.1
 
-WORKDIR /ts-sim-demo
+WORKDIR /ts-sim-test
 
 COPY ./hivesim-ts/ ./
 COPY ./hivesim-ts/src ./src
 COPY ./hivesim-ts/package*.json ./
 COPY ./hivesim-ts/src/simulators ./src/simulators
-COPY ./hivesim-ts/src/simulators/ts-sim-demo ./src/simulators/ts-sim-demo
+COPY ./hivesim-ts/src/simulators/ts-sim-test ./src/simulators/ts-sim-test
 COPY ./hivesim-ts/tsconfig.json ./
 COPY ./hivesim-ts/eslint.cjs ./
 COPY ./hivesim-ts/prettier.config.js ./
@@ -22,5 +22,5 @@ RUN npm run build
 COPY . .
 RUN pwd
 RUN ls -la
-CMD node ./dist/simulators/ts-sim-demo/main.js
+CMD node ./dist/simulators/ts-sim-test/main.js
 
