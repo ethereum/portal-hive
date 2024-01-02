@@ -1,10 +1,8 @@
 mod constants;
 
 use crate::constants::{
-    BERLIN_BLOCK_NUMBER, BOOTNODES_ENVIRONMENT_VARIABLE, BYZANTIUM_BLOCK_NUMBER,
-    CONSTANTINOPLE_BLOCK_NUMBER, HIVE_CHECK_LIVE_PORT, HOMESTEAD_BLOCK_NUMBER,
-    ISTANBUL_BLOCK_NUMBER, LONDON_BLOCK_NUMBER, MERGE_BLOCK_NUMBER, SHANGHAI_BLOCK_NUMBER,
-    TEST_DATA_FILE_PATH, TRIN_BRIDGE_CLIENT_TYPE,
+    BOOTNODES_ENVIRONMENT_VARIABLE, HIVE_CHECK_LIVE_PORT, TEST_DATA_FILE_PATH,
+    TRIN_BRIDGE_CLIENT_TYPE,
 };
 use ethportal_api::HistoryContentKey;
 use ethportal_api::HistoryContentValue;
@@ -13,31 +11,10 @@ use ethportal_api::{Discv5ApiClient, HistoryNetworkApiClient};
 use hivesim::types::ClientDefinition;
 use hivesim::{dyn_async, Client, Simulation, Suite, Test, TestSpec, TwoClientTestSpec};
 use itertools::Itertools;
+use portal_spec_test_utils_rs::get_flair;
 use serde_yaml::Value;
 use std::collections::HashMap;
 use tokio::time::Duration;
-
-fn get_flair(block_number: u64) -> String {
-    if block_number > SHANGHAI_BLOCK_NUMBER {
-        " (post-shanghai)".to_string()
-    } else if block_number > MERGE_BLOCK_NUMBER {
-        " (post-merge)".to_string()
-    } else if block_number > LONDON_BLOCK_NUMBER {
-        " (post-london)".to_string()
-    } else if block_number > BERLIN_BLOCK_NUMBER {
-        " (post-berlin)".to_string()
-    } else if block_number > ISTANBUL_BLOCK_NUMBER {
-        " (post-istanbul)".to_string()
-    } else if block_number > CONSTANTINOPLE_BLOCK_NUMBER {
-        " (post-constantinople)".to_string()
-    } else if block_number > BYZANTIUM_BLOCK_NUMBER {
-        " (post-byzantium)".to_string()
-    } else if block_number > HOMESTEAD_BLOCK_NUMBER {
-        " (post-homestead)".to_string()
-    } else {
-        "".to_string()
-    }
-}
 
 fn process_content(content: Vec<(HistoryContentKey, HistoryContentValue)>) -> Vec<String> {
     let mut last_header = content.get(0).unwrap().clone();

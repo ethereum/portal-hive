@@ -1,10 +1,6 @@
 mod constants;
 
-use crate::constants::{
-    BERLIN_BLOCK_NUMBER, BYZANTIUM_BLOCK_NUMBER, CONSTANTINOPLE_BLOCK_NUMBER,
-    HOMESTEAD_BLOCK_NUMBER, ISTANBUL_BLOCK_NUMBER, LONDON_BLOCK_NUMBER, MERGE_BLOCK_NUMBER,
-    SHANGHAI_BLOCK_NUMBER, TEST_DATA_FILE_PATH,
-};
+use crate::constants::TEST_DATA_FILE_PATH;
 use ethportal_api::types::portal::ContentInfo;
 use ethportal_api::utils::bytes::hex_encode;
 use ethportal_api::{
@@ -15,6 +11,7 @@ use hivesim::{
     dyn_async, Client, NClientTestSpec, Simulation, Suite, Test, TestSpec, TwoClientTestSpec,
 };
 use itertools::Itertools;
+use portal_spec_test_utils_rs::get_flair;
 use serde_json::json;
 use serde_yaml::Value;
 use tokio::time::Duration;
@@ -128,28 +125,6 @@ fn process_content(
         })
     }
     result
-}
-
-fn get_flair(block_number: u64) -> String {
-    if block_number > SHANGHAI_BLOCK_NUMBER {
-        " (post-shanghai)".to_string()
-    } else if block_number > MERGE_BLOCK_NUMBER {
-        " (post-merge)".to_string()
-    } else if block_number > LONDON_BLOCK_NUMBER {
-        " (post-london)".to_string()
-    } else if block_number > BERLIN_BLOCK_NUMBER {
-        " (post-berlin)".to_string()
-    } else if block_number > ISTANBUL_BLOCK_NUMBER {
-        " (post-istanbul)".to_string()
-    } else if block_number > CONSTANTINOPLE_BLOCK_NUMBER {
-        " (post-constantinople)".to_string()
-    } else if block_number > BYZANTIUM_BLOCK_NUMBER {
-        " (post-byzantium)".to_string()
-    } else if block_number > HOMESTEAD_BLOCK_NUMBER {
-        " (post-homestead)".to_string()
-    } else {
-        "".to_string()
-    }
 }
 
 dyn_async! {
