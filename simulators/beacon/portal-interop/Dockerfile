@@ -1,0 +1,25 @@
+FROM rust:1.71.1 AS builder
+
+# create a new empty shell project
+RUN USER=root cargo new --bin portal-interop
+WORKDIR /portal-interop
+
+# copy over manifests and source to build image
+COPY ./simulators/beacon/portal-interop/Cargo.toml ./Cargo.toml
+COPY ./simulators/beacon/portal-interop/src ./src
+COPY ./hivesim-rs ./../../../hivesim-rs
+
+# build for release
+RUN cargo build --release
+
+# final base
+FROM ubuntu:22.04
+
+RUN apt update && apt install wget -y
+
+# copy build artifacts from build stage
+COPY --from=builder /portal-interop/target/release/portal-interop .
+
+ENV RUST_LOG=debug
+
+ENTRYPOINT ["./portal-interop"]
