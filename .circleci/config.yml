@@ -60,7 +60,7 @@ jobs:
   build-simulator-dockerfile:
     docker:
       - image: cimg/base:2022.06
-    parallelism: 5
+    parallelism: 6
     steps:
       - setup_remote_docker:
           version: 20.10.14
@@ -68,7 +68,7 @@ jobs:
       - run:
           name: "Build dockerfile for simulator"
           command: |
-            SimDockerfile=$(circleci tests glob "simulators/*/Dockerfile" | circleci tests split --split-by=timings)
+            SimDockerfile=$(circleci tests glob "simulators/**/Dockerfile" | circleci tests split --split-by=timings)
             echo "Building Docker file: $SimDockerfile"
             docker build -f $SimDockerfile .
 workflows:
