@@ -4,10 +4,16 @@
 set -e
 
 IP_ADDR=$(hostname -i | awk '{print $1}')
+FLAGS=""
 
-# if HIVE_CLIENT_PRIVATE_KEY isn't set or doesn't exist do y, else do z
-if [ -z ${HIVE_CLIENT_PRIVATE_KEY+x} ]; then
-  RUST_LOG=debug TRIN_INFURA_PROJECT_ID="your-key-here" trin --web3-transport http --web3-http-address http://0.0.0.0:8545 --external-address "$IP_ADDR":9009 --bootnodes none
-else
-  RUST_LOG=debug TRIN_INFURA_PROJECT_ID="your-key-here" trin --web3-transport http --web3-http-address http://0.0.0.0:8545 --external-address "$IP_ADDR":9009 --bootnodes none --unsafe-private-key 0x${HIVE_CLIENT_PRIVATE_KEY}
+if [ "$HIVE_CLIENT_PRIVATE_KEY" != "" ]; then
+    FLAGS="$FLAGS --unsafe-private-key 0x$HIVE_CLIENT_PRIVATE_KEY"
 fi
+
+if [ "$HIVE_PORTAL_NETWORKS_SELECTED" != "" ]; then
+    FLAGS="$FLAGS --networks $HIVE_PORTAL_NETWORKS_SELECTED"
+else
+    FLAGS="$FLAGS --networks history"
+fi
+
+RUST_LOG=debug trin --web3-transport http --web3-http-address http://0.0.0.0:8545 --external-address "$IP_ADDR":9009 --bootnodes none $FLAGS
