@@ -644,6 +644,7 @@ dyn_async! {
         // wait content_vec.len() seconds for data to propagate, giving more time if more items are propagating
         tokio::time::sleep(Duration::from_secs(test_data.len() as u64)).await;
 
+        // process raw test data to generate content details for error output
         let (first_header_key, first_header_value) = test_data.get(0).unwrap();
         let first_header_key: HistoryContentKey =
                 serde_json::from_value(json!(first_header_key)).unwrap();
@@ -660,7 +661,7 @@ dyn_async! {
             if let HistoryContentKey::BlockHeaderWithProof(_) = &content_key {
                 last_header_seen = (content_key.clone(), content_value.clone());
             }
-            let comment =
+            let content_details =
                 if let HistoryContentValue::BlockHeaderWithProof(header_with_proof) = &last_header_seen.1 {
                     let content_type = match &content_key {
                         HistoryContentKey::BlockHeaderWithProof(_) => "header".to_string(),
@@ -675,19 +676,19 @@ dyn_async! {
                         content_type
                     )
                 } else {
-                    unreachable!("History test dated is formatted incorrectly")
+                    unreachable!("History test data is formatted incorrectly. Header wasn't infront of data. Please refer to test data file for more information")
                 };
 
             match client_b.rpc.local_content(content_key.clone()).await {
-                Ok(possible_content) => {
-                    match possible_content {
-                        PossibleHistoryContentValue::ContentPresent(content) => {
-                            if content != content_value {
-                                result.push(format!("Error content received for block {comment} was different then expected"));
+                Ok(expected_value) => {
+                    match expected_value {
+                        PossibleHistoryContentValue::ContentPresent(actual_value) => {
+                            if actual_value != content_value {
+                                result.push(format!("Error content received for block {content_details} was different then expected"));
                             }
                         }
                         PossibleHistoryContentValue::ContentAbsent => {
-                            result.push(format!("Error content for block {comment} was absent"));
+                            result.push(format!("Error content for block {content_details} was absent"));
                         }
                     }
                 }
