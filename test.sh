@@ -32,7 +32,7 @@ function run {
 function testrpc {
   client=$1
   echo "$(date) Starting hive rpc-compat simulation [$client]"
-  run "./hive --sim rpc-compat --client $client --sim.loglevel 5 $FLAGS"
+  run "./hive --sim history/rpc-compat --client $client --sim.loglevel 5 $FLAGS"
 }
 
 mkdir $RESULTS

@@ -40,7 +40,7 @@ func TestInventory(t *testing.T) {
 		}
 	})
 	t.Run("HasSimulator", func(t *testing.T) {
-		if !inv.HasSimulator("rpc-compat") {
+		if !inv.HasSimulator("history/rpc-compat") {
 			t.Error("can't find rpc-compat simulator")
 		}
 		if inv.HasSimulator("unknown simulator name") {

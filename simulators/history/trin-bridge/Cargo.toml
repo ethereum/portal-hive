@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 ethportal-api = { git = "https://github.com/ethereum/trin", rev = "b530dc3d40d51c21c800089eacb2852ebd8c4d45" }
-hivesim = { path = "../../hivesim-rs" }
+hivesim = { path = "../../../hivesim-rs" }
 itertools = "0.10.5"
 serde_yaml = "0.9"
 tokio = { version = "1", features = ["full"] }

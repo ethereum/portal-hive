@@ -60,7 +60,10 @@ jobs:
   build-simulator-dockerfile:
     docker:
       - image: cimg/base:2022.06
-    parallelism: 5
+    # parallelism level should be set to the amount of simulators we have or greater
+    # The reason for this is the CI code currently only supports 1 input at a time
+    # if we have a parallelism level of 5 and 6 sims one test runner will get 2 test sims and fail
+    parallelism: 6
     steps:
       - setup_remote_docker:
           version: 20.10.14
@@ -68,7 +71,7 @@ jobs:
       - run:
           name: "Build dockerfile for simulator"
           command: |
-            SimDockerfile=$(circleci tests glob "simulators/*/Dockerfile" | circleci tests split --split-by=timings)
+            SimDockerfile=$(circleci tests glob "simulators/**/Dockerfile" | circleci tests split --split-by=timings)
             echo "Building Docker file: $SimDockerfile"
             docker build -f $SimDockerfile .
 workflows:
