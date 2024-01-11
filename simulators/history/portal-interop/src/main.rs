@@ -641,7 +641,7 @@ dyn_async! {
             }
         }
 
-        // wait content_vec.len() seconds for data to propagate, giving more time if more items are propagating
+        // wait test_data.len() seconds for data to propagate, giving more time if more items are propagating
         tokio::time::sleep(Duration::from_secs(test_data.len() as u64)).await;
 
         // process raw test data to generate content details for error output
