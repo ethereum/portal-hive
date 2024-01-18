@@ -3,7 +3,7 @@ use ethportal_api::types::portal::ContentInfo;
 use ethportal_api::Discv5ApiClient;
 use ethportal_api::PossibleHistoryContentValue::{ContentAbsent, ContentPresent};
 use ethportal_api::{HistoryContentKey, HistoryNetworkApiClient};
-use hivesim::{dyn_async, Client, ClientTestSpec, Simulation, Suite, Test, TestSpec};
+use hivesim::{dyn_async, Client, NClientTestSpec, Simulation, Suite, Test, TestSpec};
 use serde_json::json;
 
 // Header with proof for block number 14764013
@@ -14,7 +14,7 @@ const CONTENT_VALUE: &str = "0x080000002d020000f90222a02c58e3212c085178dbb1277e2
 async fn main() {
     tracing_subscriber::fmt::init();
     let mut suite = Suite {
-        name: "rpc-compat".to_string(),
+        name: "history-rpc-compat".to_string(),
         description: "The RPC-compatibility test suite runs a set of RPC related tests against a
         running node. It tests client implementations of the JSON-RPC API for
         conformance with the portal network API specification."
@@ -49,125 +49,192 @@ async fn run_suite(host: Simulation, suite: Suite) {
 
 dyn_async! {
     async fn run_all_client_tests<'a> (test: &'a mut Test, _client: Option<Client>) {
-        test.run(ClientTestSpec {
-            name: "discv5_nodeInfo".to_string(),
-            description: "".to_string(),
-            always_run: false,
-            run: test_node_info,
-        })
-        .await;
+        // Get all available portal clients
+        let clients = test.sim.client_types().await;
 
-        test.run(ClientTestSpec {
-            name: "portal_historyLocalContent Expect ContentAbsent".to_string(),
-            description: "".to_string(),
-            always_run: false,
-            run: test_history_local_content_expect_content_absent,
-        })
-        .await;
+        // Test single type of client
+        for client in &clients {
+            test.run(
+                NClientTestSpec {
+                    name: "discv5_nodeInfo".to_string(),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_node_info,
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client.clone()],
+                }
+            ).await;
 
-        test.run(ClientTestSpec {
-            name: "portal_historyStore".to_string(),
-            description: "".to_string(),
-            always_run: false,
-            run: test_history_store,
-        })
-        .await;
+            test.run(
+                NClientTestSpec {
+                    name: "portal_historyLocalContent Expect ContentAbsent".to_string(),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_local_content_expect_content_absent,
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client.clone()],
+                }
+            ).await;
 
-        test.run(ClientTestSpec {
-            name: "portal_historyLocalContent Expect ContentPresent".to_string(),
-            description: "".to_string(),
-            always_run: false,
-            run: test_history_local_content_expect_content_present,
-        })
-        .await;
+            test.run(
+                NClientTestSpec {
+                    name: "portal_historyStore".to_string(),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_store,
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client.clone()],
+                }
+            ).await;
 
-        test.run(ClientTestSpec {
-            name: "portal_historyAddEnr Expect true".to_string(),
-            description: "".to_string(),
-            always_run: false,
-            run: test_history_add_enr_expect_true,
-        })
-        .await;
+            test.run(
+                NClientTestSpec {
+                    name: "portal_historyLocalContent Expect ContentPresent".to_string(),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_local_content_expect_content_present,
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client.clone()],
+                }
+            ).await;
 
-        test.run(ClientTestSpec {
-            name: "portal_historyGetEnr None Found".to_string(),
-            description: "".to_string(),
-            always_run: false,
-            run: test_history_get_enr_non_present,
-        })
-        .await;
+            test.run(
+                NClientTestSpec {
+                    name: "portal_historyAddEnr Expect true".to_string(),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_add_enr_expect_true,
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client.clone()],
+                }
+            ).await;
 
-        test.run(ClientTestSpec {
-            name: "portal_historyGetEnr ENR Found".to_string(),
-            description: "".to_string(),
-            always_run: false,
-            run: test_history_get_enr_enr_present,
-        })
-        .await;
+            test.run(
+                NClientTestSpec {
+                    name: "portal_historyGetEnr None Found".to_string(),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_get_enr_non_present,
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client.clone()],
+                }
+            ).await;
 
-        test.run(ClientTestSpec {
-            name: "portal_historyGetEnr Local Enr".to_string(),
-            description: "".to_string(),
-            always_run: false,
-            run: test_history_get_enr_local_enr,
-        })
-        .await;
+            test.run(
+                NClientTestSpec {
+                    name: "portal_historyGetEnr ENR Found".to_string(),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_get_enr_enr_present,
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client.clone()],
+                }
+            ).await;
 
-        test.run(ClientTestSpec {
-            name: "portal_historyDeleteEnr None Found".to_string(),
-            description: "".to_string(),
-            always_run: false,
-            run: test_history_delete_enr_non_present,
-        })
-        .await;
+            test.run(
+                NClientTestSpec {
+                    name: "portal_historyGetEnr Local Enr".to_string(),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_get_enr_local_enr,
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client.clone()],
+                }
+            ).await;
 
-        test.run(ClientTestSpec {
-            name: "portal_historyDeleteEnr ENR Found".to_string(),
-            description: "".to_string(),
-            always_run: false,
-            run: test_history_delete_enr_enr_present,
-        })
-        .await;
+            test.run(
+                NClientTestSpec {
+                    name: "portal_historyDeleteEnr None Found".to_string(),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_delete_enr_non_present,
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client.clone()],
+                }
+            ).await;
 
-        test.run(ClientTestSpec {
-            name: "portal_historyLookupEnr None Found".to_string(),
-            description: "".to_string(),
-            always_run: false,
-            run: test_history_lookup_enr_non_present,
-        })
-        .await;
+            test.run(
+                NClientTestSpec {
+                    name: "portal_historyDeleteEnr ENR Found".to_string(),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_delete_enr_enr_present,
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client.clone()],
+                }
+            ).await;
 
-        test.run(ClientTestSpec {
-            name: "portal_historyLookupEnr ENR Found".to_string(),
-            description: "".to_string(),
-            always_run: false,
-            run: test_history_lookup_enr_enr_present,
-        })
-        .await;
+            test.run(
+                NClientTestSpec {
+                    name: "portal_historyLookupEnr None Found".to_string(),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_lookup_enr_non_present,
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client.clone()],
+                }
+            ).await;
 
-        test.run(ClientTestSpec {
-            name: "portal_historyLookupEnr Local Enr".to_string(),
-            description: "".to_string(),
-            always_run: false,
-            run: test_history_lookup_enr_local_enr,
-        })
-        .await;
+            test.run(
+                NClientTestSpec {
+                    name: "portal_historyLookupEnr ENR Found".to_string(),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_lookup_enr_enr_present,
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client.clone()],
+                }
+            ).await;
 
-        test.run(ClientTestSpec {
-            name: "portal_historyRecursiveFindContent Content Absent".to_string(),
-            description: "".to_string(),
-            always_run: false,
-            run: test_recursive_find_content_content_absent,
-        })
-        .await;
+            test.run(
+                NClientTestSpec {
+                    name: "portal_historyLookupEnr Local Enr".to_string(),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_lookup_enr_local_enr,
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client.clone()],
+                }
+            ).await;
+
+            test.run(
+                NClientTestSpec {
+                    name: "portal_historyRecursiveFindContent Content Absent".to_string(),
+                    description: "".to_string(),
+                    always_run: false,
+                    run: test_recursive_find_content_content_absent,
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client.clone()],
+                }
+            ).await;
+        }
     }
 }
 
 dyn_async! {
-    async fn test_node_info<'a> (client: Client) {
-       let response = client
-            .rpc
-            .node_info().await;
+    async fn test_node_info<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let client = match clients.into_iter().next() {
+            Some((client)) => client,
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
+
+        let response = Discv5ApiClient::node_info(&client.rpc).await;
 
         if let Err(err) = response {
             panic!("Expected response not received: {err}");
@@ -176,15 +243,19 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_local_content_expect_content_absent<'a>(client: Client) {
+    async fn test_local_content_expect_content_absent<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let client = match clients.into_iter().next() {
+            Some((client)) => client,
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         let content_key =
         serde_json::from_value(json!(CONTENT_KEY));
 
         match content_key {
             Ok(content_key) => {
-                let response = client
-                    .rpc
-                    .local_content(content_key).await;
+                let response = HistoryNetworkApiClient::local_content(&client.rpc, content_key).await;
 
                 match response {
                     Ok(response) => {
@@ -206,7 +277,13 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_store<'a>(client: Client) {
+    async fn test_store<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let client = match clients.into_iter().next() {
+            Some((client)) => client,
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         let content_key =
         serde_json::from_value(json!(CONTENT_KEY));
 
@@ -217,9 +294,7 @@ dyn_async! {
             Ok(content_key) => {
                 match content_value {
                     Ok(content_value) => {
-                        let response = client
-                            .rpc
-                            .store(content_key, content_value).await;
+                        let response = HistoryNetworkApiClient::store(&client.rpc, content_key, content_value).await;
 
                         if let Err(err) = response {
                             panic!("{}", &err.to_string());
@@ -238,7 +313,13 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_local_content_expect_content_present<'a>(client: Client) {
+    async fn test_local_content_expect_content_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let client = match clients.into_iter().next() {
+            Some((client)) => client,
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         let content_key: Result<ethportal_api::HistoryContentKey, serde_json::Error> =
         serde_json::from_value(json!(CONTENT_KEY));
 
@@ -251,9 +332,7 @@ dyn_async! {
                 // seed content_key/content_value onto the local node to test local_content expect content present
                 match content_value {
                     Ok(content_value) => {
-                        let response = client
-                            .rpc
-                            .store(content_key.clone(), content_value).await;
+                        let response = HistoryNetworkApiClient::store(&client.rpc, content_key.clone(), content_value).await;
 
                         if let Err(err) = response {
                             panic!("{}", &err.to_string());
@@ -265,9 +344,7 @@ dyn_async! {
                 }
 
                 // Here we are calling local_content RPC to test if the content is present
-                let response = client
-                    .rpc
-                    .local_content(content_key).await;
+                let response = HistoryNetworkApiClient::local_content(&client.rpc, content_key).await;
 
                 match response {
                     Ok(response) => {
@@ -289,7 +366,13 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_add_enr_expect_true<'a>(client: Client) {
+    async fn test_add_enr_expect_true<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let client = match clients.into_iter().next() {
+            Some((client)) => client,
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         let (_, enr) = generate_random_remote_enr();
         match HistoryNetworkApiClient::add_enr(&client.rpc, enr).await {
             Ok(response) => match response {
@@ -302,7 +385,13 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_get_enr_non_present<'a>(client: Client) {
+    async fn test_get_enr_non_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let client = match clients.into_iter().next() {
+            Some((client)) => client,
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         let (_, enr) = generate_random_remote_enr();
 
         if (HistoryNetworkApiClient::get_enr(&client.rpc, enr.node_id()).await).is_ok() {
@@ -312,9 +401,15 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_get_enr_local_enr<'a>(client: Client) {
+    async fn test_get_enr_local_enr<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let client = match clients.into_iter().next() {
+            Some((client)) => client,
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         // get our local enr from NodeInfo
-        let target_enr = match client.rpc.node_info().await {
+        let target_enr = match Discv5ApiClient::node_info(&client.rpc).await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
                 panic!("Error getting node info: {err:?}");
@@ -334,7 +429,13 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_get_enr_enr_present<'a>(client: Client) {
+    async fn test_get_enr_enr_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let client = match clients.into_iter().next() {
+            Some((client)) => client,
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         let (_, enr) = generate_random_remote_enr();
 
         // seed enr into routing table
@@ -359,7 +460,13 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_delete_enr_non_present<'a>(client: Client) {
+    async fn test_delete_enr_non_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let client = match clients.into_iter().next() {
+            Some((client)) => client,
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         let (_, enr) = generate_random_remote_enr();
         match HistoryNetworkApiClient::delete_enr(&client.rpc, enr.node_id()).await {
             Ok(response) => match response {
@@ -372,7 +479,13 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_delete_enr_enr_present<'a>(client: Client) {
+    async fn test_delete_enr_enr_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let client = match clients.into_iter().next() {
+            Some((client)) => client,
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         let (_, enr) = generate_random_remote_enr();
 
         // seed enr into routing table
@@ -411,7 +524,13 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_lookup_enr_non_present<'a>(client: Client) {
+    async fn test_lookup_enr_non_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let client = match clients.into_iter().next() {
+            Some((client)) => client,
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         let (_, enr) = generate_random_remote_enr();
 
         if (HistoryNetworkApiClient::lookup_enr(&client.rpc, enr.node_id()).await).is_ok() {
@@ -421,7 +540,13 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_lookup_enr_enr_present<'a>(client: Client) {
+    async fn test_lookup_enr_enr_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let client = match clients.into_iter().next() {
+            Some((client)) => client,
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         let (_, enr) = generate_random_remote_enr();
 
         // seed enr into routing table
@@ -446,9 +571,15 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_lookup_enr_local_enr<'a>(client: Client) {
+    async fn test_lookup_enr_local_enr<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let client = match clients.into_iter().next() {
+            Some((client)) => client,
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         // get our local enr from NodeInfo
-        let target_enr = match client.rpc.node_info().await {
+        let target_enr = match Discv5ApiClient::node_info(&client.rpc).await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
                 panic!("Error getting node info: {err:?}");
@@ -469,10 +600,16 @@ dyn_async! {
 
 dyn_async! {
     // test that a node will return a AbsentContent via RecursiveFindContent when the data doesn't exist
-    async fn test_recursive_find_content_content_absent<'a> (client: Client) {
+    async fn test_recursive_find_content_content_absent<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let client = match clients.into_iter().next() {
+            Some((client)) => client,
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(CONTENT_KEY)).unwrap();
 
-        match client.rpc.recursive_find_content(header_with_proof_key).await {
+        match HistoryNetworkApiClient::recursive_find_content(&client.rpc, header_with_proof_key).await {
             Ok(result) => {
                 match result {
                     ContentInfo::Content{ content: ethportal_api::PossibleHistoryContentValue::ContentAbsent, utp_transfer } => {
