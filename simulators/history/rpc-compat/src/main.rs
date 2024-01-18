@@ -14,7 +14,7 @@ const CONTENT_VALUE: &str = "0x080000002d020000f90222a02c58e3212c085178dbb1277e2
 async fn main() {
     tracing_subscriber::fmt::init();
     let mut suite = Suite {
-        name: "rpc-compat".to_string(),
+        name: "history-rpc-compat".to_string(),
         description: "The RPC-compatibility test suite runs a set of RPC related tests against a
         running node. It tests client implementations of the JSON-RPC API for
         conformance with the portal network API specification."
@@ -71,7 +71,7 @@ dyn_async! {
                     name: "portal_historyLocalContent Expect ContentAbsent".to_string(),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_history_local_content_expect_content_absent,
+                    run: test_local_content_expect_content_absent,
                     environments: None,
                     test_data: None,
                     clients: vec![client.clone()],
@@ -83,7 +83,7 @@ dyn_async! {
                     name: "portal_historyStore".to_string(),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_history_store,
+                    run: test_store,
                     environments: None,
                     test_data: None,
                     clients: vec![client.clone()],
@@ -95,7 +95,7 @@ dyn_async! {
                     name: "portal_historyLocalContent Expect ContentPresent".to_string(),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_history_local_content_expect_content_present,
+                    run: test_local_content_expect_content_present,
                     environments: None,
                     test_data: None,
                     clients: vec![client.clone()],
@@ -107,7 +107,7 @@ dyn_async! {
                     name: "portal_historyAddEnr Expect true".to_string(),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_history_add_enr_expect_true,
+                    run: test_add_enr_expect_true,
                     environments: None,
                     test_data: None,
                     clients: vec![client.clone()],
@@ -119,7 +119,7 @@ dyn_async! {
                     name: "portal_historyGetEnr None Found".to_string(),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_history_get_enr_non_present,
+                    run: test_get_enr_non_present,
                     environments: None,
                     test_data: None,
                     clients: vec![client.clone()],
@@ -131,7 +131,7 @@ dyn_async! {
                     name: "portal_historyGetEnr ENR Found".to_string(),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_history_get_enr_enr_present,
+                    run: test_get_enr_enr_present,
                     environments: None,
                     test_data: None,
                     clients: vec![client.clone()],
@@ -143,7 +143,7 @@ dyn_async! {
                     name: "portal_historyGetEnr Local Enr".to_string(),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_history_get_enr_local_enr,
+                    run: test_get_enr_local_enr,
                     environments: None,
                     test_data: None,
                     clients: vec![client.clone()],
@@ -155,7 +155,7 @@ dyn_async! {
                     name: "portal_historyDeleteEnr None Found".to_string(),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_history_delete_enr_non_present,
+                    run: test_delete_enr_non_present,
                     environments: None,
                     test_data: None,
                     clients: vec![client.clone()],
@@ -167,7 +167,7 @@ dyn_async! {
                     name: "portal_historyDeleteEnr ENR Found".to_string(),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_history_delete_enr_enr_present,
+                    run: test_delete_enr_enr_present,
                     environments: None,
                     test_data: None,
                     clients: vec![client.clone()],
@@ -179,7 +179,7 @@ dyn_async! {
                     name: "portal_historyLookupEnr None Found".to_string(),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_history_lookup_enr_non_present,
+                    run: test_lookup_enr_non_present,
                     environments: None,
                     test_data: None,
                     clients: vec![client.clone()],
@@ -191,7 +191,7 @@ dyn_async! {
                     name: "portal_historyLookupEnr ENR Found".to_string(),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_history_lookup_enr_enr_present,
+                    run: test_lookup_enr_enr_present,
                     environments: None,
                     test_data: None,
                     clients: vec![client.clone()],
@@ -203,7 +203,7 @@ dyn_async! {
                     name: "portal_historyLookupEnr Local Enr".to_string(),
                     description: "".to_string(),
                     always_run: false,
-                    run: test_history_lookup_enr_local_enr,
+                    run: test_lookup_enr_local_enr,
                     environments: None,
                     test_data: None,
                     clients: vec![client.clone()],
@@ -243,7 +243,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_local_content_expect_content_absent<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+    async fn test_local_content_expect_content_absent<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
         let client = match clients.into_iter().next() {
             Some((client)) => client,
             None => {
@@ -277,7 +277,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_store<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+    async fn test_store<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
         let client = match clients.into_iter().next() {
             Some((client)) => client,
             None => {
@@ -313,7 +313,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_local_content_expect_content_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+    async fn test_local_content_expect_content_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
         let client = match clients.into_iter().next() {
             Some((client)) => client,
             None => {
@@ -366,7 +366,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_add_enr_expect_true<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+    async fn test_add_enr_expect_true<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
         let client = match clients.into_iter().next() {
             Some((client)) => client,
             None => {
@@ -385,7 +385,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_get_enr_non_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+    async fn test_get_enr_non_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
         let client = match clients.into_iter().next() {
             Some((client)) => client,
             None => {
@@ -401,7 +401,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_get_enr_local_enr<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+    async fn test_get_enr_local_enr<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
         let client = match clients.into_iter().next() {
             Some((client)) => client,
             None => {
@@ -429,7 +429,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_get_enr_enr_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+    async fn test_get_enr_enr_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
         let client = match clients.into_iter().next() {
             Some((client)) => client,
             None => {
@@ -460,7 +460,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_delete_enr_non_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+    async fn test_delete_enr_non_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
         let client = match clients.into_iter().next() {
             Some((client)) => client,
             None => {
@@ -479,7 +479,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_delete_enr_enr_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+    async fn test_delete_enr_enr_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
         let client = match clients.into_iter().next() {
             Some((client)) => client,
             None => {
@@ -524,7 +524,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_lookup_enr_non_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+    async fn test_lookup_enr_non_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
         let client = match clients.into_iter().next() {
             Some((client)) => client,
             None => {
@@ -540,7 +540,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_lookup_enr_enr_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+    async fn test_lookup_enr_enr_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
         let client = match clients.into_iter().next() {
             Some((client)) => client,
             None => {
@@ -571,7 +571,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_lookup_enr_local_enr<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+    async fn test_lookup_enr_local_enr<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
         let client = match clients.into_iter().next() {
             Some((client)) => client,
             None => {
