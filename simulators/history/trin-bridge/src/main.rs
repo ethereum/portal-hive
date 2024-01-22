@@ -11,7 +11,7 @@ use ethportal_api::HistoryContentValue;
 use ethportal_api::PossibleHistoryContentValue;
 use ethportal_api::{Discv5ApiClient, HistoryNetworkApiClient};
 use hivesim::types::ClientDefinition;
-use hivesim::{dyn_async, Client, Simulation, Suite, Test, TestSpec, TwoClientTestSpec};
+use hivesim::{dyn_async, Client, NClientTestSpec, Simulation, Suite, Test, TestSpec};
 use itertools::Itertools;
 use serde_yaml::Value;
 use std::collections::HashMap;
@@ -116,13 +116,14 @@ dyn_async! {
         // Iterate over all possible pairings of clients and run the tests (including self-pairings)
         for (client_a, client_b) in clients.iter().cartesian_product(clients.iter()) {
             test.run(
-                TwoClientTestSpec {
+                NClientTestSpec {
                     name: format!("Bridge test. A:{} --> B:{}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_bridge,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client_a.clone(), client_b.clone()],
                 }
             ).await;
         }
@@ -130,7 +131,14 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_bridge<'a> (client_a: Client, client_b: Client) {
+    async fn test_bridge<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let (client_a, client_b) = match clients.iter().collect_tuple() {
+            Some((client_a, client_b)) => (client_a, client_b),
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
+
         let client_b_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {

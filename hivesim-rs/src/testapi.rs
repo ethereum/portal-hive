@@ -8,7 +8,7 @@ use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
 use std::collections::HashMap;
 use std::net::IpAddr;
 
-use crate::utils::{client_test_name, extract_test_results};
+use crate::utils::extract_test_results;
 
 pub type AsyncTestFunc = fn(
     &mut Test,
@@ -18,27 +18,6 @@ pub type AsyncTestFunc = fn(
         dyn Future<Output = ()> // future API / pollable
             + Send // required by non-single-threaded executors
             + '_,
-    >,
->;
-
-pub type AsyncClientTestFunc = fn(
-    Client,
-) -> Pin<
-    Box<
-        dyn Future<Output = ()> // future API / pollable
-            + Send // required by non-single-threaded executors
-            + 'static,
-    >,
->;
-
-pub type AsyncTwoClientsTestFunc = fn(
-    Client,
-    Client,
-) -> Pin<
-    Box<
-        dyn Future<Output = ()> // future API / pollable
-            + Send // required by non-single-threaded executors
-            + 'static,
     >,
 >;
 
@@ -152,78 +131,6 @@ impl Test {
     }
 }
 
-/// ClientTestSpec is a test against a single client.
-/// When used as a test in a suite, the test runs against all available client types.
-#[derive(Clone)]
-pub struct ClientTestSpec {
-    // These fields are displayed in the UI. Be sure to add
-    // a meaningful description here.
-    pub name: String,
-    // If AlwaysRun is true, the test will run even if Name does not match the test
-    // pattern. This option is useful for tests that launch a client instance and
-    // then perform further tests against it.
-    pub description: String,
-    // If AlwaysRun is true, the test will run even if Name does not match the test
-    // pattern. This option is useful for tests that launch a client instance and
-    // then perform further tests against it.
-    pub always_run: bool,
-    // The Run function is invoked when the test executes.
-    pub run: AsyncClientTestFunc,
-}
-
-#[async_trait]
-impl Testable for ClientTestSpec {
-    async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite) {
-        let clients = simulation.client_types().await;
-
-        for client in clients {
-            let client_name = client.name;
-            let test_run = TestRun {
-                suite_id,
-                suite: suite.clone(),
-                name: client_test_name(self.name.clone(), client_name.clone()),
-                desc: self.description.clone(),
-                always_run: self.always_run,
-            };
-
-            run_client_test(simulation.clone(), test_run, client_name, self.run).await;
-        }
-    }
-}
-
-async fn run_client_test(
-    host: Simulation,
-    test: TestRun,
-    client_name: String,
-    func: AsyncClientTestFunc,
-) {
-    // Register test on simulation server and initialize the Test.
-    let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
-    let suite_id = test.suite_id;
-
-    // run test function
-    let cloned_host = host.clone();
-    let test_result = extract_test_results(
-        tokio::spawn(async move {
-            let test = &mut Test {
-                sim: cloned_host,
-                test_id,
-                suite: test.suite,
-                suite_id,
-                result: Default::default(),
-            };
-
-            test.result.pass = true;
-
-            let client = test.start_client(client_name, None).await;
-            (func)(client).await;
-        })
-        .await,
-    );
-
-    host.end_test(suite_id, test_id, test_result).await;
-}
-
 #[derive(Clone)]
 pub struct TestSpec {
     // These fields are displayed in the UI. Be sure to add
@@ -281,80 +188,6 @@ pub async fn run_test(
 
             // run test function
             (func)(test, client).await;
-        })
-        .await,
-    );
-
-    host.end_test(suite_id, test_id, test_result).await;
-}
-
-#[derive(Clone)]
-pub struct TwoClientTestSpec {
-    // These fields are displayed in the UI. Be sure to add
-    // a meaningful description here.
-    pub name: String,
-    pub description: String,
-    // If AlwaysRun is true, the test will run even if Name does not match the test
-    // pattern. This option is useful for tests that launch a client instance and
-    // then perform further tests against it.
-    pub always_run: bool,
-    // The Run function is invoked when the test executes.
-    pub run: AsyncTwoClientsTestFunc,
-    pub client_a: ClientDefinition,
-    pub client_b: ClientDefinition,
-}
-
-#[async_trait]
-impl Testable for TwoClientTestSpec {
-    async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite) {
-        let test_run = TestRun {
-            suite_id,
-            suite,
-            name: self.name.to_owned(),
-            desc: self.description.to_owned(),
-            always_run: self.always_run,
-        };
-
-        run_two_client_test(
-            simulation,
-            test_run,
-            self.client_a.to_owned(),
-            self.client_b.to_owned(),
-            self.run,
-        )
-        .await;
-    }
-}
-
-// Write a test that runs against two clients.
-async fn run_two_client_test(
-    host: Simulation,
-    test: TestRun,
-    client_a: ClientDefinition,
-    client_b: ClientDefinition,
-    func: AsyncTwoClientsTestFunc,
-) {
-    // Register test on simulation server and initialize the T.
-    let test_id = host.start_test(test.suite_id, test.name, test.desc).await;
-    let suite_id = test.suite_id;
-
-    // run test function
-    let cloned_host = host.clone();
-    let test_result = extract_test_results(
-        tokio::spawn(async move {
-            let test = &mut Test {
-                sim: cloned_host,
-                test_id,
-                suite: test.suite,
-                suite_id,
-                result: Default::default(),
-            };
-
-            test.result.pass = true;
-
-            let client_a = test.start_client(client_a.name, None).await;
-            let client_b = test.start_client(client_b.name, None).await;
-            (func)(client_a, client_b).await;
         })
         .await,
     );

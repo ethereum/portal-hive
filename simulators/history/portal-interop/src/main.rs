@@ -11,9 +11,7 @@ use ethportal_api::{
     ContentValue, Discv5ApiClient, HistoryContentKey, HistoryContentValue, HistoryNetworkApiClient,
     OverlayContentKey, PossibleHistoryContentValue,
 };
-use hivesim::{
-    dyn_async, Client, NClientTestSpec, Simulation, Suite, Test, TestSpec, TwoClientTestSpec,
-};
+use hivesim::{dyn_async, Client, NClientTestSpec, Simulation, Suite, Test, TestSpec};
 use itertools::Itertools;
 use serde_json::json;
 use serde_yaml::Value;
@@ -209,35 +207,38 @@ dyn_async! {
             }
 
             // Test portal history ping
-            test.run(TwoClientTestSpec {
+            test.run(NClientTestSpec {
                     name: format!("PING {} --> {}", client_a.name, client_b.name),
                     description: "".to_string(),
                     always_run: false,
                     run: test_ping,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client_a.clone(), client_b.clone()],
                 }
             ).await;
 
             // Test find content non-present
-            test.run(TwoClientTestSpec {
+            test.run(NClientTestSpec {
                     name: format!("FIND_CONTENT non present {} --> {}", client_a.name, client_b.name),
                     description: "find content: calls find content that doesn't exist".to_string(),
                     always_run: false,
                     run: test_find_content_non_present,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client_a.clone(), client_b.clone()],
                 }
             ).await;
 
             // Test find nodes distance zero
-            test.run(TwoClientTestSpec {
+            test.run(NClientTestSpec {
                     name: format!("FIND_NODES Distance 0 {} --> {}", client_a.name, client_b.name),
                     description: "find nodes: distance zero expect called nodes enr".to_string(),
                     always_run: false,
                     run: test_find_nodes_zero_distance,
-                    client_a: client_a.clone(),
-                    client_b: client_b.clone(),
+                    environments: None,
+                    test_data: None,
+                    clients: vec![client_a.clone(), client_b.clone()],
                 }
             ).await;
 
@@ -259,7 +260,13 @@ dyn_async! {
 
 dyn_async! {
     // test that a node will not return content via FINDCONTENT.
-    async fn test_find_content_non_present<'a> (client_a: Client, client_b: Client) {
+    async fn test_find_content_non_present<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let (client_a, client_b) = match clients.iter().collect_tuple() {
+            Some((client_a, client_b)) => (client_a, client_b),
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         let header_with_proof_key: HistoryContentKey = serde_json::from_value(json!(HEADER_WITH_PROOF_KEY)).unwrap();
 
         let target_enr = match client_b.rpc.node_info().await {
@@ -366,7 +373,13 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_ping<'a>(client_a: Client, client_b: Client) {
+    async fn test_ping<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let (client_a, client_b) = match clients.iter().collect_tuple() {
+            Some((client_a, client_b)) => (client_a, client_b),
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         let target_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
@@ -401,7 +414,13 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_find_nodes_zero_distance<'a>(client_a: Client, client_b: Client) {
+    async fn test_find_nodes_zero_distance<'a>(clients: Vec<Client>, _: Option<Vec<(String, String)>>) {
+        let (client_a, client_b) = match clients.iter().collect_tuple() {
+            Some((client_a, client_b)) => (client_a, client_b),
+            None => {
+                panic!("Unable to get expected amount of clients from NClientTestSpec");
+            }
+        };
         let target_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
