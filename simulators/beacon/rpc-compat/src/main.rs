@@ -1,4 +1,5 @@
 mod constants;
+
 use crate::constants::BEACON_STRING;
 use crate::constants::HIVE_PORTAL_NETWORKS_SELECTED;
 use ethportal_api::types::beacon::ContentInfo;
@@ -64,7 +65,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_node_info,
-                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.clone().to_string())]))]),
+                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.to_string())]))]),
                     test_data: None,
                     clients: vec![client.clone()],
                 }
@@ -76,7 +77,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_local_content_expect_content_absent,
-                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.clone().to_string())]))]),
+                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.to_string())]))]),
                     test_data: None,
                     clients: vec![client.clone()],
                 }
@@ -88,7 +89,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_store,
-                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.clone().to_string())]))]),
+                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.to_string())]))]),
                     test_data: None,
                     clients: vec![client.clone()],
                 }
@@ -100,7 +101,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_local_content_expect_content_present,
-                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.clone().to_string())]))]),
+                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.to_string())]))]),
                     test_data: None,
                     clients: vec![client.clone()],
                 }
@@ -112,7 +113,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_add_enr_expect_true,
-                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.clone().to_string())]))]),
+                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.to_string())]))]),
                     test_data: None,
                     clients: vec![client.clone()],
                 }
@@ -124,7 +125,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_get_enr_non_present,
-                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.clone().to_string())]))]),
+                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.to_string())]))]),
                     test_data: None,
                     clients: vec![client.clone()],
                 }
@@ -136,7 +137,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_get_enr_enr_present,
-                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.clone().to_string())]))]),
+                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.to_string())]))]),
                     test_data: None,
                     clients: vec![client.clone()],
                 }
@@ -148,7 +149,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_get_enr_local_enr,
-                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.clone().to_string())]))]),
+                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.to_string())]))]),
                     test_data: None,
                     clients: vec![client.clone()],
                 }
@@ -160,7 +161,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_delete_enr_non_present,
-                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.clone().to_string())]))]),
+                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.to_string())]))]),
                     test_data: None,
                     clients: vec![client.clone()],
                 }
@@ -172,7 +173,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_delete_enr_enr_present,
-                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.clone().to_string())]))]),
+                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.to_string())]))]),
                     test_data: None,
                     clients: vec![client.clone()],
                 }
@@ -184,7 +185,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_lookup_enr_non_present,
-                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.clone().to_string())]))]),
+                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.to_string())]))]),
                     test_data: None,
                     clients: vec![client.clone()],
                 }
@@ -196,7 +197,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_lookup_enr_enr_present,
-                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.clone().to_string())]))]),
+                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.to_string())]))]),
                     test_data: None,
                     clients: vec![client.clone()],
                 }
@@ -208,7 +209,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_lookup_enr_local_enr,
-                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.clone().to_string())]))]),
+                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.to_string())]))]),
                     test_data: None,
                     clients: vec![client.clone()],
                 }
@@ -220,7 +221,7 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_recursive_find_content_content_absent,
-                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.clone().to_string())]))]),
+                    environments: Some(vec![Some(HashMap::from([(HIVE_PORTAL_NETWORKS_SELECTED.to_string(), BEACON_STRING.to_string())]))]),
                     test_data: None,
                     clients: vec![client.clone()],
                 }
