@@ -76,7 +76,7 @@ struct ProcessedContent {
 fn process_content(
     content: Vec<(HistoryContentKey, HistoryContentValue)>,
 ) -> Vec<ProcessedContent> {
-    let mut last_header = content.get(0).unwrap().clone();
+    let mut last_header = content.first().unwrap().clone();
 
     let mut result: Vec<ProcessedContent> = vec![];
     for history_content in content.into_iter() {
@@ -302,7 +302,7 @@ dyn_async! {
                 }
             }
         }
-        let (target_key, target_value) = test_data.get(0).expect("Target content is required for this test");
+        let (target_key, target_value) = test_data.first().expect("Target content is required for this test");
         let target_key: HistoryContentKey =
             serde_json::from_value(json!(target_key)).unwrap();
         let target_value: HistoryContentValue =
@@ -409,7 +409,7 @@ dyn_async! {
                     panic!("Response from FindNodes didn't return expected length of 1");
                 }
 
-                match response.get(0) {
+                match response.first() {
                     Some(response_enr) => {
                         if *response_enr != target_enr {
                             panic!("Response from FindNodes didn't return expected Enr");
@@ -451,7 +451,7 @@ dyn_async! {
             }
         }
 
-        let (target_key, target_value) = test_data.get(0).expect("Target content is required for this test");
+        let (target_key, target_value) = test_data.first().expect("Target content is required for this test");
         let target_key: HistoryContentKey =
             serde_json::from_value(json!(target_key)).unwrap();
         let target_value: HistoryContentValue =
@@ -536,7 +536,7 @@ dyn_async! {
             }
         }
 
-        let (target_key, target_value) = test_data.get(0).expect("Target content is required for this test");
+        let (target_key, target_value) = test_data.first().expect("Target content is required for this test");
         let target_key: HistoryContentKey =
             serde_json::from_value(json!(target_key)).unwrap();
         let target_value: HistoryContentValue =
@@ -639,7 +639,7 @@ dyn_async! {
         tokio::time::sleep(Duration::from_secs(test_data.len() as u64)).await;
 
         // process raw test data to generate content details for error output
-        let (first_header_key, first_header_value) = test_data.get(0).unwrap();
+        let (first_header_key, first_header_value) = test_data.first().unwrap();
         let first_header_key: HistoryContentKey =
                 serde_json::from_value(json!(first_header_key)).unwrap();
         let first_header_value: HistoryContentValue =

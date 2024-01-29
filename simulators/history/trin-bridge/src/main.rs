@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use tokio::time::Duration;
 
 fn process_content(content: Vec<(HistoryContentKey, HistoryContentValue)>) -> Vec<String> {
-    let mut last_header = content.get(0).unwrap().clone();
+    let mut last_header = content.first().unwrap().clone();
 
     let mut result: Vec<String> = vec![];
     for history_content in content.into_iter() {
