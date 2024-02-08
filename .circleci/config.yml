@@ -40,7 +40,7 @@ jobs:
       - run:
           name: "Compile Go simulators"
           command: ".circleci/compile-simulators.sh"
-  rust-simulators:
+  hivesim-rs:
       docker:
         - image: cimg/rust:1.75.0
       steps:
@@ -55,29 +55,18 @@ jobs:
             name: Install Clang
             command: sudo apt update && sudo apt-get install clang -y
         - run:
-            name: "Lint, build, test Rust simulators"
-            command: ".circleci/rust-simulators.sh"
-  build-simulator-dockerfile:
-    docker:
-      - image: cimg/base:2022.06
-    # parallelism level should be set to the amount of simulators we have or greater
-    # The reason for this is the CI code currently only supports 1 input at a time
-    # if we have a parallelism level of 5 and 6 sims one test runner will get 2 test sims and fail
-    parallelism: 7
-    steps:
-      - setup_remote_docker:
-          version: 20.10.14
-      - checkout
-      - run:
-          name: "Build dockerfile for simulator"
-          command: |
-            SimDockerfile=$(circleci tests glob "simulators/**/Dockerfile" | circleci tests split --split-by=timings)
-            echo "Building Docker file: $SimDockerfile"
-            docker build -f $SimDockerfile .
+            name: "Lint"
+            command: "cd hivesim-rs && cargo fmt --all -- --check"
+        - run:
+            name: "Build"
+            command: "cd hivesim-rs && cargo clippy --all --all-targets --all-features --no-deps -- --deny warnings"
+        - run:
+            name: "Test hivesim-rs"
+            command: "cd hivesim-rs && cargo test --workspace -- --nocapture"            
+
 workflows:
   main:
     jobs:
       - go-test
       - build
-      - rust-simulators
-      - build-simulator-dockerfile
+      - hivesim-rs
