@@ -1,4 +1,4 @@
-use crate::types::{ClientDefinition, SuiteID, TestID, TestResult};
+use crate::types::{ClientDefinition, SuiteID, TestData, TestID, TestResult};
 use crate::Simulation;
 use ::std::{boxed::Box, future::Future, pin::Pin};
 use async_trait::async_trait;
@@ -23,7 +23,7 @@ pub type AsyncTestFunc = fn(
 
 pub type AsyncNClientsTestFunc = fn(
     Vec<Client>,
-    Option<Vec<(String, String)>>,
+    Option<TestData>,
 ) -> Pin<
     Box<
         dyn Future<Output = ()> // future API / pollable
@@ -211,7 +211,7 @@ pub struct NClientTestSpec {
     /// The environments must be in the same order as the `clients`
     pub environments: Option<Vec<Option<HashMap<String, String>>>>,
     /// test data which can be passed to the test
-    pub test_data: Option<Vec<(String, String)>>,
+    pub test_data: Option<TestData>,
     pub clients: Vec<ClientDefinition>,
 }
 
@@ -243,7 +243,7 @@ async fn run_n_client_test(
     host: Simulation,
     test: TestRun,
     environments: Option<Vec<Option<HashMap<String, String>>>>,
-    test_data: Option<Vec<(String, String)>>,
+    test_data: Option<TestData>,
     clients: Vec<ClientDefinition>,
     func: AsyncNClientsTestFunc,
 ) {
