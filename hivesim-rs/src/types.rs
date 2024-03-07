@@ -52,8 +52,8 @@ pub struct ContentKeyOfferLookupValues {
 
 #[derive(Clone, Debug)]
 pub enum TestData {
-    /// A list of tuple's containing content key/value pairs
+    /// A list of tuples containing content key/value pairs
     ContentList(Vec<ContentKeyValue>),
-    /// A list of tuple's containing a content key, offer value, and return value
+    /// A list of tuples containing a content key, offer value, and lookup value
     StateContentList(Vec<ContentKeyOfferLookupValues>),
 }
