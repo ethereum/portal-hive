@@ -36,3 +36,24 @@ pub struct TestResult {
     pub pass: bool,
     pub details: String,
 }
+
+#[derive(Clone, Debug)]
+pub struct ContentKeyValue {
+    pub key: String,
+    pub value: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct ContentKeyOfferLookupValues {
+    pub key: String,
+    pub offer_value: String,
+    pub lookup_value: String,
+}
+
+#[derive(Clone, Debug)]
+pub enum TestData {
+    /// A list of tuple's containing content key/value pairs
+    ContentList(Vec<ContentKeyValue>),
+    /// A list of tuple's containing a content key, offer value, and return value
+    StateContentList(Vec<ContentKeyOfferLookupValues>),
+}

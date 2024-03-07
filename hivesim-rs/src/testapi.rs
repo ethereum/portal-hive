@@ -1,4 +1,4 @@
-use crate::types::{ClientDefinition, SuiteID, TestID, TestResult};
+use crate::types::{ClientDefinition, SuiteID, TestData, TestID, TestResult};
 use crate::Simulation;
 use ::std::{boxed::Box, future::Future, pin::Pin};
 use async_trait::async_trait;
@@ -193,14 +193,6 @@ pub async fn run_test(
     );
 
     host.end_test(suite_id, test_id, test_result).await;
-}
-
-#[derive(Clone, Debug)]
-pub enum TestData {
-    /// A list of tupel's containing content key/value pairs
-    ContentList(Vec<(String, String)>),
-    /// A list of tupel's containing a content key, offer value, and return value
-    StateContentList(Vec<(String, String, String)>),
 }
 
 #[derive(Clone)]
