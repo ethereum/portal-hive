@@ -23,7 +23,7 @@ pub type AsyncTestFunc = fn(
 
 pub type AsyncNClientsTestFunc = fn(
     Vec<Client>,
-    Option<Vec<(String, String)>>,
+    Option<TestData>,
 ) -> Pin<
     Box<
         dyn Future<Output = ()> // future API / pollable
@@ -195,6 +195,14 @@ pub async fn run_test(
     host.end_test(suite_id, test_id, test_result).await;
 }
 
+#[derive(Clone, Debug)]
+pub enum TestData {
+    /// A list of tupel's containing content key/value pairs
+    ContentList(Vec<(String, String)>),
+    /// A list of tupel's containing a content key, offer value, and return value
+    StateContentList((String, String, String)),
+}
+
 #[derive(Clone)]
 pub struct NClientTestSpec {
     /// These fields are displayed in the UI. Be sure to add
@@ -211,7 +219,7 @@ pub struct NClientTestSpec {
     /// The environments must be in the same order as the `clients`
     pub environments: Option<Vec<Option<HashMap<String, String>>>>,
     /// test data which can be passed to the test
-    pub test_data: Option<Vec<(String, String)>>,
+    pub test_data: Option<TestData>,
     pub clients: Vec<ClientDefinition>,
 }
 
@@ -243,7 +251,7 @@ async fn run_n_client_test(
     host: Simulation,
     test: TestRun,
     environments: Option<Vec<Option<HashMap<String, String>>>>,
-    test_data: Option<Vec<(String, String)>>,
+    test_data: Option<TestData>,
     clients: Vec<ClientDefinition>,
     func: AsyncNClientsTestFunc,
 ) {
