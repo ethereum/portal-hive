@@ -200,7 +200,7 @@ pub enum TestData {
     /// A list of tupel's containing content key/value pairs
     ContentList(Vec<(String, String)>),
     /// A list of tupel's containing a content key, offer value, and return value
-    StateContentList((String, String, String)),
+    StateContentList(Vec<(String, String, String)>),
 }
 
 #[derive(Clone)]
