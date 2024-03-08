@@ -57,3 +57,21 @@ pub enum TestData {
     /// A list of tuples containing a content key, offer value, and lookup value
     StateContentList(Vec<ContentKeyOfferLookupValues>),
 }
+
+impl TestData {
+    pub fn content_list(self) -> Vec<ContentKeyValue> {
+        if let TestData::ContentList(content_list) = self {
+            content_list
+        } else {
+            panic!("TestData didn't contain ContentList: enum was likely filled with the wrong data {self:?}")
+        }
+    }
+
+    pub fn state_content_list(self) -> Vec<ContentKeyOfferLookupValues> {
+        if let TestData::StateContentList(state_content_list) = self {
+            state_content_list
+        } else {
+            panic!("TestData didn't contain StateContentList: enum was likely filled with the wrong data {self:?}")
+        }
+    }
+}
